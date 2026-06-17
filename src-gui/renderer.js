@@ -96,69 +96,147 @@ editor.addEventListener('input', () => {
     if (currentActiveFile) saveBtn.disabled = false;
 });
 
-// --- Request Logic ---
+// --- Request Execution Logic ---
+const runAllBtn = document.getElementById('runAllBtn');
+
+// Helper to extract nested json path
+function extractPath(obj, path) {
+    return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+}
+
+async function executeRequest(req, selectedEnv) {
+    let rawReq = { ...req };
+    
+    if (selectedEnv && environments[selectedEnv]) {
+        const envVars = environments[selectedEnv];
+        const interpolate = (str) => {
+            if (!str) return str;
+            return str.replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
+                const key = varName.trim();
+                return envVars[key] !== undefined ? envVars[key] : match;
+            });
+        };
+        rawReq.url = interpolate(rawReq.url);
+        rawReq.headers = interpolate(rawReq.headers);
+        rawReq.body = interpolate(rawReq.body);
+    }
+    
+    return await window.api.request(rawReq);
+}
+
+function handleResponseUI(response) {
+    if (response.status <= 0) {
+        output.textContent = `Native Exception (Status ${response.status}):\n${response.error || 'Connection failed or host unreachable'}`;
+        output.className = "";
+        statusBadge.textContent = "ERROR";
+        statusBadge.className = "status-badge status-error";
+        statusBadge.style.display = 'inline-block';
+        return null;
+    } else {
+        statusBadge.textContent = response.status;
+        statusBadge.className = `status-badge ${response.status >= 200 && response.status < 300 ? 'status-success' : 'status-error'}`;
+        statusBadge.style.display = 'inline-block';
+
+        let bodyText = response.body;
+        let isJson = false;
+        let parsedJson = null;
+        try {
+            parsedJson = JSON.parse(response.body);
+            bodyText = JSON.stringify(parsedJson, null, 2);
+            isJson = true;
+        } catch (e) {}
+        
+        output.textContent = bodyText;
+        if (isJson) {
+            output.className = "language-json";
+            hljs.highlightElement(output);
+        } else {
+            output.className = "";
+        }
+        return parsedJson;
+    }
+}
+
 btn.addEventListener('click', async () => {
     output.style.color = 'var(--text-dim)';
     output.textContent = "Loading...\nSending native request via Nitpick bridge...";
     btn.disabled = true;
+    runAllBtn.disabled = true;
     statusBadge.style.display = 'none';
 
     try {
-        let rawText = editor.value;
-        const selectedEnv = envSelect.value;
+        const requests = window.parseNapitFile(editor.value);
+        const cursorPosition = editor.selectionStart;
         
-        // Phase 3: Interpolation Pre-processor
-        if (selectedEnv && environments[selectedEnv]) {
-            const envVars = environments[selectedEnv];
-            rawText = rawText.replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
-                const key = varName.trim();
-                return envVars[key] !== undefined ? envVars[key] : match;
-            });
-        }
-        
-        const req = window.parseNapitFile(rawText);
-        
-        const response = await window.api.request(req);
-        
-        if (response.status <= 0) {
-            output.textContent = `Native Exception (Status ${response.status}):\n${response.error || 'Connection failed or host unreachable'}`;
-            output.className = ""; // Remove language-json class
-            statusBadge.textContent = "ERROR";
-            statusBadge.className = "status-badge status-error";
-            statusBadge.style.display = 'inline-block';
-        } else {
-            // Display status badge
-            statusBadge.textContent = response.status;
-            statusBadge.className = `status-badge ${response.status >= 200 && response.status < 300 ? 'status-success' : 'status-error'}`;
-            statusBadge.style.display = 'inline-block';
-
-            let bodyText = response.body;
-            let isJson = false;
-            try {
-                // Pretty print JSON
-                bodyText = JSON.stringify(JSON.parse(response.body), null, 2);
-                isJson = true;
-            } catch (e) {
-                // Not JSON, output raw
-            }
-            
-            output.textContent = bodyText;
-            if (isJson) {
-                output.className = "language-json";
-                hljs.highlightElement(output);
-            } else {
-                output.className = ""; // plain text
+        // Find which block the cursor is in. Fallback to first block if not found inside any.
+        let targetReq = requests[0];
+        for (const req of requests) {
+            if (cursorPosition >= req.startIdx && cursorPosition <= req.endIdx) {
+                targetReq = req;
+                break;
             }
         }
+        
+        const response = await executeRequest(targetReq, envSelect.value);
+        handleResponseUI(response);
     } catch (err) {
         output.textContent = `Parse/IPC Exception:\n${err.message}`;
-        output.className = ""; // Remove language-json class
+        output.className = "";
         statusBadge.textContent = "PARSE ERR";
         statusBadge.className = "status-badge status-error";
         statusBadge.style.display = 'inline-block';
     }
 
     btn.disabled = false;
+    runAllBtn.disabled = false;
+});
+
+runAllBtn.addEventListener('click', async () => {
+    output.style.color = 'var(--text-dim)';
+    output.textContent = "Running Flow...\nExecuting multiple requests sequentially...";
+    btn.disabled = true;
+    runAllBtn.disabled = true;
+    statusBadge.style.display = 'none';
+
+    try {
+        const requests = window.parseNapitFile(editor.value);
+        const selectedEnv = envSelect.value;
+        
+        // Create a temporary environment context so we don't mutate the global one permanently if it fails
+        if (selectedEnv && !environments[selectedEnv]) {
+             environments[selectedEnv] = {};
+        }
+        
+        let lastParsedJson = null;
+
+        for (let i = 0; i < requests.length; i++) {
+            const req = requests[i];
+            output.textContent = `Running Request ${i + 1}/${requests.length}: ${req.method} ${req.url}...`;
+            
+            const response = await executeRequest(req, selectedEnv);
+            lastParsedJson = handleResponseUI(response);
+            
+            // If it failed and returned status <= 0, stop flow
+            if (response.status <= 0) break;
+            
+            // Handle Extraction
+            if (req.extraction && lastParsedJson && selectedEnv) {
+                const extractedValue = extractPath(lastParsedJson, req.extraction.path);
+                if (extractedValue) {
+                    environments[selectedEnv][req.extraction.varName] = extractedValue;
+                }
+            }
+        }
+    } catch (err) {
+        output.textContent = `Flow Exception:\n${err.message}`;
+        output.className = "";
+        statusBadge.textContent = "FLOW ERR";
+        statusBadge.className = "status-badge status-error";
+        statusBadge.style.display = 'inline-block';
+    }
+
+    btn.disabled = false;
+    runAllBtn.disabled = false;
 });
 
 // --- cURL Export ---
@@ -177,7 +255,15 @@ copyCurlBtn.addEventListener('click', async () => {
             });
         }
         
-        const req = window.parseNapitFile(rawText);
+        const requests = window.parseNapitFile(rawText);
+        const cursorPosition = editor.selectionStart;
+        let req = requests[0];
+        for (const r of requests) {
+            if (cursorPosition >= r.startIdx && cursorPosition <= r.endIdx) {
+                req = r;
+                break;
+            }
+        }
         
         let curlCmd = `curl -X ${req.method} "${req.url}"`;
         
@@ -341,7 +427,16 @@ function updateSnippetView(lang) {
                 return envVars[key] !== undefined ? envVars[key] : match;
             });
         }
-        const req = window.parseNapitFile(rawText);
+        const requests = window.parseNapitFile(rawText);
+        const cursorPosition = editor.selectionStart;
+        let req = requests[0];
+        for (const r of requests) {
+            if (cursorPosition >= r.startIdx && cursorPosition <= r.endIdx) {
+                req = r;
+                break;
+            }
+        }
+        
         currentSnippet = generateSnippet(lang, req);
         
         codeSnippet.className = `language-${lang}`;
