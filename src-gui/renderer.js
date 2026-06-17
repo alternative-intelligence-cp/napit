@@ -618,7 +618,6 @@ document.addEventListener('mousedown', (e) => {
 });
 
 // Initialize highlight
-hljs.registerLanguage('graphql', window.hljsBuiltin?.graphql || (() => {})); // Just in case it's packaged differently, though vendor script handles it
 
 function updateEditorHighlight() {
     // Escape HTML from textarea
@@ -666,7 +665,15 @@ let aiMessageHistory = [
 ];
 
 toggleAiBtn.addEventListener('click', () => {
-    aiSidebar.style.display = aiSidebar.style.display === 'none' ? 'flex' : 'none';
+    try {
+        if (aiSidebar.style.display === 'none' || aiSidebar.style.display === '') {
+            aiSidebar.style.display = 'flex';
+        } else {
+            aiSidebar.style.display = 'none';
+        }
+    } catch(e) {
+        alert(e);
+    }
 });
 
 closeAiBtn.addEventListener('click', () => {
