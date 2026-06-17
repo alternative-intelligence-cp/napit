@@ -1,0 +1,27 @@
+{
+  "name": "napit",
+  "version": "1.0.0",
+  "description": "Napit is a powerful, cross-platform API client application designed to test and explore HTTP APIs.",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alternative-intelligence-cp/napit.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/alternative-intelligence-cp/napit/issues"
+  },
+  "homepage": "https://github.com/alternative-intelligence-cp/napit#readme",
+  "dependencies": {
+    "nitpick-node": "file:../nitpick-packages/packages/nitpick-node"
+  }
+}
