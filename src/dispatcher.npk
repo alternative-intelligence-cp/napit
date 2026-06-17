@@ -1,0 +1,9 @@
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-api/src/types.npk".*;
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-api/src/client.npk".*;
+
+pub func:dispatch_request = Response(Request:req) {
+    drop(client_init());
+    Response:res = raw client_send(req);
+    drop(client_cleanup());
+    pass(res);
+};
