@@ -1,7 +1,9 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const nitpick = require('nitpick-node/build/Release/nitpick_addon');
+const { chatWithAgent } = require('./agent.js');
 
 function createWindow() {
     const mainWindow = new BrowserWindow({
@@ -87,6 +89,11 @@ app.whenReady().then(() => {
     ipcMain.handle('api:saveFile', async (event, filePath, content) => {
         await fs.writeFile(filePath, content, 'utf8');
         return true;
+    });
+
+    // Handle AI Chat
+    ipcMain.handle('api:chat', async (event, history, workspacePath) => {
+        return await chatWithAgent(history, workspacePath);
     });
 
     createWindow();

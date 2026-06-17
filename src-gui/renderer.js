@@ -650,3 +650,102 @@ editor.addEventListener('scroll', () => {
 
 // Initialize highlight
 updateEditorHighlight();
+
+// --- AI Chat Logic ---
+const toggleAiBtn = document.getElementById('toggleAiBtn');
+const closeAiBtn = document.getElementById('closeAiBtn');
+const aiSidebar = document.getElementById('aiSidebar');
+const chatHistory = document.getElementById('chatHistory');
+const chatInput = document.getElementById('chatInput');
+const sendChatBtn = document.getElementById('sendChatBtn');
+
+let aiMessageHistory = [
+    { role: 'system', content: 'You are an autonomous AI Agent embedded inside Napit (an Electron desktop app for making HTTP/GraphQL requests). You can write .napit files directly into the workspace using the write_file tool. Your goal is to help the user design and test API requests.' }
+];
+
+let currentWorkspacePath = null;
+
+// Grab workspace path from existing file tree logic
+const originalOpenDirectory = window.api.openDirectory;
+window.api.openDirectory = async () => {
+    const result = await originalOpenDirectory();
+    if (result) currentWorkspacePath = result.workspacePath;
+    return result;
+};
+
+toggleAiBtn.addEventListener('click', () => {
+    aiSidebar.style.display = aiSidebar.style.display === 'none' ? 'flex' : 'none';
+});
+
+closeAiBtn.addEventListener('click', () => {
+    aiSidebar.style.display = 'none';
+});
+
+function appendChatBubble(role, content) {
+    const div = document.createElement('div');
+    div.className = `chat-bubble ${role}`;
+    div.textContent = content;
+    chatHistory.appendChild(div);
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+async function sendChatMessage() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    if (!currentWorkspacePath) {
+        alert("Please open a Workspace folder first so the AI knows where to write files.");
+        return;
+    }
+
+    // Add user message
+    appendChatBubble('user', text);
+    aiMessageHistory.push({ role: 'user', content: text });
+    chatInput.value = '';
+    sendChatBtn.disabled = true;
+    chatInput.disabled = true;
+
+    // Loading indicator
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'chat-bubble assistant';
+    loadingDiv.textContent = 'Thinking...';
+    chatHistory.appendChild(loadingDiv);
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+
+    try {
+        const resultHistory = await window.api.chat(aiMessageHistory, currentWorkspacePath);
+        aiMessageHistory = resultHistory;
+        
+        // Remove loading
+        chatHistory.removeChild(loadingDiv);
+
+        // Append new messages from agent and tools since the last user message
+        // Find index of the user message we just sent
+        const userMsgIndex = aiMessageHistory.findLastIndex(m => m.role === 'user' && m.content === text);
+        if (userMsgIndex !== -1) {
+            for (let i = userMsgIndex + 1; i < aiMessageHistory.length; i++) {
+                const msg = aiMessageHistory[i];
+                if (msg.role === 'assistant' && msg.content) {
+                    appendChatBubble('assistant', msg.content);
+                } else if (msg.role === 'tool') {
+                    appendChatBubble('tool', `⚙️ [${msg.name}] ${msg.content}`);
+                }
+            }
+        }
+    } catch (err) {
+        chatHistory.removeChild(loadingDiv);
+        appendChatBubble('tool', `Error communicating with agent: ${err.message}`);
+    }
+
+    sendChatBtn.disabled = false;
+    chatInput.disabled = false;
+    chatInput.focus();
+}
+
+sendChatBtn.addEventListener('click', sendChatMessage);
+chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChatMessage();
+    }
+});
