@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "toolchain": {
+    "compiler_version": "/home/randy/Workspace/REPOS/nitpick/build/nitpickc",
+    "compiler_hash": ""
+  },
+  "targets": {
+    "napit": {
+      "artifact_path": ".nitpick_make/build/napit",
+      "source_hash": "fnv1a:8717711981725108094",
+      "command_hash": 2869938391524833494,
+      "source_timestamp": 18446744069053609325,
+      "build_timestamp": 1781721790,
+      "build_duration_ms": 169,
+      "dependencies": [],
+      "implicit_inputs": []
+    }
+  }
+}

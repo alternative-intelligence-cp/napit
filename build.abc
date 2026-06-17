@@ -1,0 +1,12 @@
+[project]
+name = "napit"
+version = "0.1.0"
+compiler = "/home/randy/Workspace/REPOS/nitpick/build/nitpickc"
+
+[target.napit]
+type = "binary"
+sources = ["src/main.npk"]
+deps = []
+flags = ["-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-args/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-cli/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-api/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-http/src"]
+link_libraries = ["nitpick_http_shim", "nitpick_cli_shim", "curl"]
+link_paths = ["/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-http", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-cli"]
