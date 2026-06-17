@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/alternative-intelligence-cp/napit#readme",
   "dependencies": {
+    "highlight.js": "^11.11.1",
     "nitpick-node": "file:../nitpick-packages/packages/nitpick-node"
   },
   "devDependencies": {

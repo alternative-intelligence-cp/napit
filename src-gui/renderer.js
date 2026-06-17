@@ -122,6 +122,7 @@ btn.addEventListener('click', async () => {
         
         if (response.status <= 0) {
             output.textContent = `Native Exception (Status ${response.status}):\n${response.error || 'Connection failed or host unreachable'}`;
+            output.className = ""; // Remove language-json class
             statusBadge.textContent = "ERROR";
             statusBadge.className = "status-badge status-error";
             statusBadge.style.display = 'inline-block';
@@ -132,20 +133,26 @@ btn.addEventListener('click', async () => {
             statusBadge.style.display = 'inline-block';
 
             let bodyText = response.body;
+            let isJson = false;
             try {
                 // Pretty print JSON
                 bodyText = JSON.stringify(JSON.parse(response.body), null, 2);
-                output.style.color = 'var(--text-main)'; // Brighten color on success
+                isJson = true;
             } catch (e) {
-                // Output raw text
-                output.style.color = 'var(--text-dim)';
+                // Not JSON, output raw
             }
             
-            let headersText = response.headers ? response.headers.trim() : "Native headers currently unsupported";
-            output.textContent = `${bodyText}`;
+            output.textContent = bodyText;
+            if (isJson) {
+                output.className = "language-json";
+                hljs.highlightElement(output);
+            } else {
+                output.className = ""; // plain text
+            }
         }
     } catch (err) {
         output.textContent = `Parse/IPC Exception:\n${err.message}`;
+        output.className = ""; // Remove language-json class
         statusBadge.textContent = "PARSE ERR";
         statusBadge.className = "status-badge status-error";
         statusBadge.style.display = 'inline-block';
@@ -153,3 +160,37 @@ btn.addEventListener('click', async () => {
 
     btn.disabled = false;
 });
+
+// --- Editor Syntax Highlighting & Sync ---
+const editorHighlight = document.getElementById('editorHighlight');
+
+function updateEditorHighlight() {
+    // Escape HTML from textarea
+    let text = editor.value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    
+    // Add an empty space to ensure last line highlights if it ends in newline
+    if(text[text.length-1] === "\n") {
+        text += " ";
+    }
+    
+    editorHighlight.innerHTML = text;
+    hljs.highlightElement(editorHighlight);
+}
+
+// Sync scroll positions
+editor.addEventListener('scroll', () => {
+    editorHighlight.scrollTop = editor.scrollTop;
+    editorHighlight.scrollLeft = editor.scrollLeft;
+});
+
+// Update highlighting on input
+editor.addEventListener('input', () => {
+    updateEditorHighlight();
+    if (currentActiveFile) saveBtn.disabled = false;
+});
+
+// Initialize highlight
+updateEditorHighlight();

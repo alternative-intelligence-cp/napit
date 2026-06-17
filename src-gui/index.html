@@ -5,6 +5,8 @@
     <title>Napit</title>
     <!-- Use Inter font from Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../node_modules/highlight.js/styles/atom-one-dark.css">
+    
     <style>
         :root {
             --bg-color: #121212;
@@ -16,6 +18,22 @@
             --text-dim: #a0a0a0;
             --error-color: #ff5252;
             --success-color: #4caf50;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         * {
@@ -160,22 +178,53 @@
             gap: 10px;
         }
 
-        textarea {
+        .editor-container {
             flex: 1;
-            background: transparent;
+            position: relative;
+            background: rgba(0,0,0,0.2);
             border: 1px solid var(--border-color);
-            color: var(--text-main);
-            font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 14px;
-            padding: 15px;
             border-radius: 8px;
-            resize: none;
-            outline: none;
+            overflow: hidden;
             transition: border-color 0.2s ease;
         }
 
-        textarea:focus {
+        .editor-container:focus-within {
             border-color: var(--accent-color);
+        }
+
+        textarea, .editor-highlight {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow: auto;
+            tab-size: 4;
+        }
+
+        .editor-highlight {
+            pointer-events: none;
+            color: var(--text-main);
+            background: transparent;
+            z-index: 1;
+        }
+
+        textarea {
+            color: transparent;
+            background: transparent;
+            caret-color: var(--text-main);
+            resize: none;
+            outline: none;
+            z-index: 2;
         }
 
         button.primary-btn {
@@ -275,12 +324,15 @@
                     <button id="sendBtn" class="primary-btn">Send Request</button>
                 </div>
             </div>
-            <textarea id="editor" spellcheck="false">```http
+            <div class="editor-container">
+                <pre><code id="editorHighlight" class="editor-highlight language-http"></code></pre>
+                <textarea id="editor" spellcheck="false">```http
 GET https://httpbin.org/get
 Accept: application/json
-User-Agent: Napit-GUI/0.2.0
+User-Agent: Napit-GUI/0.5.0
 
 ```</textarea>
+            </div>
         </div>
 
         <!-- Right Pane: Response Viewer -->
@@ -289,11 +341,16 @@ User-Agent: Napit-GUI/0.2.0
                 Response
                 <span id="statusBadge" class="status-badge" style="display:none;"></span>
             </div>
-            <div id="output" class="response-container">Awaiting request...</div>
+            <div class="response-container">
+                <pre><code id="output" class="language-json">Awaiting request...</code></pre>
+            </div>
         </div>
     </div>
 
     <!-- Load the parser utility and then the renderer script -->
+    <script src="./vendor/highlight.min.js"></script>
+    <script src="./vendor/json.min.js"></script>
+    <script src="./vendor/http.min.js"></script>
     <script src="./parser.js"></script>
     <script src="./renderer.js"></script>
 </body>
