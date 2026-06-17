@@ -263,6 +263,124 @@ importCurlBtn.addEventListener('click', async () => {
     }
 });
 
+// --- Code Snippet Generator ---
+const generateCodeBtn = document.getElementById('generateCodeBtn');
+const codeModal = document.getElementById('codeModal');
+const closeModalBtn = document.getElementById('closeModalBtn');
+const tabBtns = document.querySelectorAll('.tab-btn');
+const codeSnippet = document.getElementById('codeSnippet');
+const copySnippetBtn = document.getElementById('copySnippetBtn');
+let currentSnippet = '';
+
+function generateSnippet(lang, req) {
+    let code = '';
+    const headers = req.headers ? req.headers.split('|').filter(h => h.trim()) : [];
+    const hasHeaders = headers.length > 0;
+    
+    if (lang === 'javascript') {
+        code = `fetch("${req.url}", {\n`;
+        code += `  method: "${req.method}",\n`;
+        if (hasHeaders) {
+            code += `  headers: {\n`;
+            headers.forEach(h => {
+                const parts = h.split(':');
+                if(parts.length >= 2) code += `    "${parts[0].trim()}": "${parts.slice(1).join(':').trim()}",\n`;
+            });
+            code += `  },\n`;
+        }
+        if (req.body) {
+            code += `  body: JSON.stringify(${req.body.trim()}),\n`;
+        }
+        code += `})\n.then(response => response.json())\n.then(data => console.log(data))\n.catch(err => console.error(err));`;
+    } 
+    else if (lang === 'python') {
+        code = `import requests\n\nurl = "${req.url}"\n`;
+        if (hasHeaders) {
+            code += `headers = {\n`;
+            headers.forEach(h => {
+                const parts = h.split(':');
+                if(parts.length >= 2) code += `    "${parts[0].trim()}": "${parts.slice(1).join(':').trim()}",\n`;
+            });
+            code += `}\n`;
+        }
+        if (req.body) {
+            code += `\npayload = ${req.body.trim()}\n`;
+        }
+        code += `\nresponse = requests.request("${req.method}", url${hasHeaders ? ', headers=headers' : ''}${req.body ? ', json=payload' : ''})\n`;
+        code += `print(response.text)`;
+    }
+    else if (lang === 'go') {
+        code = `package main\n\nimport (\n\t"fmt"\n\t"io/ioutil"\n\t"net/http"\n${req.body ? '\t"strings"\n' : ''})\n\nfunc main() {\n`;
+        code += `\turl := "${req.url}"\n`;
+        if (req.body) {
+            const escapedBody = req.body.replace(/"/g, '\\"');
+            code += `\tpayload := strings.NewReader("${escapedBody}")\n`;
+            code += `\treq, _ := http.NewRequest("${req.method}", url, payload)\n`;
+        } else {
+            code += `\treq, _ := http.NewRequest("${req.method}", url, nil)\n`;
+        }
+        if (hasHeaders) {
+            headers.forEach(h => {
+                const parts = h.split(':');
+                if(parts.length >= 2) code += `\treq.Header.Add("${parts[0].trim()}", "${parts.slice(1).join(':').trim()}")\n`;
+            });
+        }
+        code += `\n\tres, _ := http.DefaultClient.Do(req)\n\tdefer res.Body.Close()\n\tbody, _ := ioutil.ReadAll(res.Body)\n\n\tfmt.Println(string(body))\n}`;
+    }
+    return code;
+}
+
+function updateSnippetView(lang) {
+    try {
+        let rawText = editor.value;
+        const selectedEnv = envSelect.value;
+        if (selectedEnv && environments[selectedEnv]) {
+            const envVars = environments[selectedEnv];
+            rawText = rawText.replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
+                const key = varName.trim();
+                return envVars[key] !== undefined ? envVars[key] : match;
+            });
+        }
+        const req = window.parseNapitFile(rawText);
+        currentSnippet = generateSnippet(lang, req);
+        
+        codeSnippet.className = `language-${lang}`;
+        codeSnippet.textContent = currentSnippet;
+        
+        // Remove previous highlight formatting
+        codeSnippet.removeAttribute('data-highlighted');
+        hljs.highlightElement(codeSnippet);
+        
+    } catch (err) {
+        codeSnippet.textContent = `Error generating code:\n${err.message}`;
+    }
+}
+
+generateCodeBtn.addEventListener('click', () => {
+    codeModal.style.display = 'flex';
+    const activeTab = document.querySelector('.tab-btn.active').getAttribute('data-lang');
+    updateSnippetView(activeTab);
+});
+
+closeModalBtn.addEventListener('click', () => {
+    codeModal.style.display = 'none';
+});
+
+tabBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        updateSnippetView(e.target.getAttribute('data-lang'));
+    });
+});
+
+copySnippetBtn.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(currentSnippet);
+    const originalText = copySnippetBtn.textContent;
+    copySnippetBtn.textContent = 'Copied!';
+    setTimeout(() => copySnippetBtn.textContent = originalText, 1500);
+});
+
 // --- Editor Syntax Highlighting & Sync ---
 const editorHighlight = document.getElementById('editorHighlight');
 
