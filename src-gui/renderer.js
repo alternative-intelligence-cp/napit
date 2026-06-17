@@ -1,37 +1,48 @@
 const btn = document.getElementById('sendBtn');
 const output = document.getElementById('output');
+const editor = document.getElementById('editor');
+const statusBadge = document.getElementById('statusBadge');
 
 btn.addEventListener('click', async () => {
+    output.style.color = 'var(--text-dim)';
     output.textContent = "Loading...\nSending native request via Nitpick bridge...";
     btn.disabled = true;
-
-    const req = {
-        method: "GET",
-        url: "https://httpbin.org/get",
-        headers: "User-Agent: Napit-GUI/0.1.0",
-        body: ""
-    };
+    statusBadge.style.display = 'none';
 
     try {
+        const req = window.parseNapitFile(editor.value);
+        
         const response = await window.api.request(req);
         
         if (response.status === 0) {
-            output.textContent = `Error: ${response.error}`;
+            output.textContent = `Native Exception:\n${response.error}`;
+            statusBadge.textContent = "ERROR";
+            statusBadge.className = "status-badge status-error";
+            statusBadge.style.display = 'inline-block';
         } else {
+            // Display status badge
+            statusBadge.textContent = response.status;
+            statusBadge.className = `status-badge ${response.status >= 200 && response.status < 300 ? 'status-success' : 'status-error'}`;
+            statusBadge.style.display = 'inline-block';
+
             let bodyText = response.body;
             try {
-                // Pretty print if JSON
+                // Pretty print JSON
                 bodyText = JSON.stringify(JSON.parse(response.body), null, 2);
+                output.style.color = 'var(--text-main)'; // Brighten color on success
             } catch (e) {
-                // Ignore, just use raw text
+                // Output raw text
+                output.style.color = 'var(--text-dim)';
             }
             
-            let headersText = response.headers ? response.headers.trim() : "Headers not yet supported by native bridge";
-            
-            output.textContent = `--- Status ---\n${response.status}\n\n--- Headers ---\n${headersText}\n\n--- Body ---\n${bodyText}`;
+            let headersText = response.headers ? response.headers.trim() : "Native headers currently unsupported";
+            output.textContent = `${bodyText}`;
         }
     } catch (err) {
-        output.textContent = `IPC Exception: ${err}`;
+        output.textContent = `Parse/IPC Exception:\n${err.message}`;
+        statusBadge.textContent = "PARSE ERR";
+        statusBadge.className = "status-badge status-error";
+        statusBadge.style.display = 'inline-block';
     }
 
     btn.disabled = false;
