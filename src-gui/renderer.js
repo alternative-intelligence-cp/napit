@@ -384,6 +384,9 @@ copySnippetBtn.addEventListener('click', async () => {
 // --- Editor Syntax Highlighting & Sync ---
 const editorHighlight = document.getElementById('editorHighlight');
 
+// Initialize highlight
+hljs.registerLanguage('graphql', window.hljsBuiltin?.graphql || (() => {})); // Just in case it's packaged differently, though vendor script handles it
+
 function updateEditorHighlight() {
     // Escape HTML from textarea
     let text = editor.value
@@ -396,7 +399,15 @@ function updateEditorHighlight() {
         text += " ";
     }
     
+    // Detect if it's graphql to apply correct syntax class to the editor
+    if (text.includes('```graphql')) {
+        editorHighlight.className = "editor-highlight language-graphql";
+    } else {
+        editorHighlight.className = "editor-highlight language-http";
+    }
+    
     editorHighlight.innerHTML = text;
+    editorHighlight.removeAttribute('data-highlighted');
     hljs.highlightElement(editorHighlight);
 }
 

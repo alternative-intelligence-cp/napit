@@ -5,12 +5,16 @@
  */
 function parseNapitFile(content) {
     let text = content.trim();
+    let isGraphql = false;
 
     // Extract from markdown code block if present
-    const httpBlockRegex = /```(?:http)?\s*\n([\s\S]*?)```/;
-    const match = text.match(httpBlockRegex);
+    const blockRegex = /```(http|graphql)?\s*\n([\s\S]*?)```/i;
+    const match = text.match(blockRegex);
     if (match) {
-        text = match[1].trim();
+        if (match[1] && match[1].toLowerCase() === 'graphql') {
+            isGraphql = true;
+        }
+        text = match[2].trim();
     }
 
     const lines = text.split('\n');
@@ -36,7 +40,6 @@ function parseNapitFile(content) {
             i++;
             break; // Empty line separates headers from body
         }
-        // Expecting Key: Value
         const colonIdx = line.indexOf(':');
         if (colonIdx > 0) {
             headersArr.push(line);
@@ -44,9 +47,8 @@ function parseNapitFile(content) {
         i++;
     }
 
-    // Join headers with a pipe "|" as expected by the nitpick-node bridge currently
     // Note: The C bridge takes a string like "Key: Value|Key2: Value2"
-    const headers = headersArr.join('|');
+    let headers = headersArr.join('|');
 
     // 3. Parse Body
     let bodyArr = [];
@@ -54,7 +56,45 @@ function parseNapitFile(content) {
         bodyArr.push(lines[i]);
         i++;
     }
-    const body = bodyArr.join('\n').trim();
+    let body = bodyArr.join('\n').trim();
+
+    if (isGraphql && body) {
+        // Attempt to split body into query and variables.
+        // We look for a JSON object at the end of the body.
+        let query = body;
+        let variables = null;
+
+        // Find the last '{' that starts a line (likely the variables JSON)
+        const lastBraceIdx = body.lastIndexOf('\n{');
+        if (lastBraceIdx !== -1) {
+            const possibleJson = body.substring(lastBraceIdx).trim();
+            try {
+                variables = JSON.parse(possibleJson);
+                // If it successfully parses as JSON, the rest is the query
+                query = body.substring(0, lastBraceIdx).trim();
+            } catch (e) {
+                // Not valid JSON, so the whole body is the query
+            }
+        } else if (body.startsWith('{') && body.endsWith('}')) {
+             // Edge case: Maybe there's only variables? Unlikely for GraphQL.
+             // Or maybe the query starts with { and has no variables.
+             // We'll assume it's just a query.
+        }
+
+        const graphqlPayload = {
+            query: query
+        };
+        if (variables) {
+            graphqlPayload.variables = variables;
+        }
+
+        body = JSON.stringify(graphqlPayload);
+        
+        // Ensure Content-Type is application/json for GraphQL
+        if (!headers.toLowerCase().includes('content-type')) {
+            headers = headers ? headers + '|Content-Type: application/json' : 'Content-Type: application/json';
+        }
+    }
 
     return {
         method,
