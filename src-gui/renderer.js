@@ -28,6 +28,8 @@ openFolderBtn.addEventListener('click', async () => {
             const opt = document.createElement('option');
             opt.value = envName;
             opt.textContent = envName;
+            opt.style.background = '#121212';
+            opt.style.color = '#ffffff';
             envSelect.appendChild(opt);
         });
         envContainer.style.display = 'block';
@@ -118,8 +120,8 @@ btn.addEventListener('click', async () => {
         
         const response = await window.api.request(req);
         
-        if (response.status === 0) {
-            output.textContent = `Native Exception:\n${response.error}`;
+        if (response.status <= 0) {
+            output.textContent = `Native Exception (Status ${response.status}):\n${response.error || 'Connection failed or host unreachable'}`;
             statusBadge.textContent = "ERROR";
             statusBadge.className = "status-badge status-error";
             statusBadge.style.display = 'inline-block';
