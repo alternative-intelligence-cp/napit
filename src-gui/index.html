@@ -263,6 +263,23 @@
             color: var(--error-color);
         }
 
+        .res-tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+            padding: 4px 8px;
+            border-bottom: 2px solid transparent;
+            margin-right: 8px;
+        }
+
+        .res-tab-btn.active {
+            color: var(--text-main);
+            border-bottom: 2px solid var(--accent-color);
+        }
+
         button.primary-btn {
             background: var(--accent-color);
             color: #fff;
@@ -448,13 +465,22 @@ User-Agent: Napit-GUI/0.5.0
         </div>
 
         <!-- Right Pane: Response Viewer -->
-        <div class="pane">
+        <div class="pane" style="flex: 1;">
             <div class="pane-header">
                 Response
                 <span id="statusBadge" class="status-badge" style="display:none;"></span>
             </div>
-            <div class="response-container">
-                <pre><code id="output" class="language-json">Awaiting request...</code></pre>
+            
+            <div style="border-bottom: 1px solid var(--border-color); margin-bottom: 10px; display: flex;">
+                <button id="resBodyTab" class="res-tab-btn active">Body</button>
+                <button id="resHeadersTab" class="res-tab-btn">Headers</button>
+            </div>
+            
+            <div id="outputContainer" class="output-container" style="flex: 1; display: block;">
+                <pre><code id="output" class="language-json">Response will appear here...</code></pre>
+            </div>
+            <div id="headersContainer" class="output-container" style="flex: 1; display: none;">
+                <pre><code id="headersOutput" class="language-http" style="white-space: pre-wrap; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; color: var(--text-dim);">Headers will appear here...</code></pre>
             </div>
         </div>
 

@@ -51,6 +51,30 @@ function renderTabs() {
     });
 }
 
+// Start the initialization sequence
+init();
+
+// --- Response Tabs Logic ---
+const resBodyTab = document.getElementById('resBodyTab');
+const resHeadersTab = document.getElementById('resHeadersTab');
+const outputContainer = document.getElementById('outputContainer');
+const headersContainer = document.getElementById('headersContainer');
+const headersOutput = document.getElementById('headersOutput');
+
+resBodyTab.addEventListener('click', () => {
+    resBodyTab.classList.add('active');
+    resHeadersTab.classList.remove('active');
+    outputContainer.style.display = 'block';
+    headersContainer.style.display = 'none';
+});
+
+resHeadersTab.addEventListener('click', () => {
+    resHeadersTab.classList.add('active');
+    resBodyTab.classList.remove('active');
+    headersContainer.style.display = 'block';
+    outputContainer.style.display = 'none';
+});
+
 function switchTab(index) {
     if (index < 0 || index >= openFiles.length) return;
     
@@ -243,24 +267,28 @@ function handleResponseUI(response) {
         statusBadge.textContent = response.status;
         statusBadge.className = `status-badge ${response.status >= 200 && response.status < 300 ? 'status-success' : 'status-error'}`;
         statusBadge.style.display = 'inline-block';
-
-        let bodyText = response.body;
-        let isJson = false;
-        let parsedJson = null;
-        try {
-            parsedJson = JSON.parse(response.body);
-            bodyText = JSON.stringify(parsedJson, null, 2);
-            isJson = true;
-        } catch (e) {}
-        
-        output.textContent = bodyText;
-        if (isJson) {
-            output.className = "language-json";
-            hljs.highlightElement(output);
+        if (response.error) {
+            output.textContent = response.error;
+            output.className = 'language-plaintext';
+            headersOutput.textContent = response.headers || '';
         } else {
-            output.className = "";
+            try {
+                const parsed = JSON.parse(response.body);
+                output.textContent = JSON.stringify(parsed, null, 2);
+                output.className = 'language-json';
+            } catch (e) {
+                output.textContent = response.body;
+                output.className = 'language-plaintext';
+            }
+            headersOutput.textContent = response.headers || '';
         }
-        return parsedJson;
+        
+        hljs.highlightElement(output);
+        if (response.headers) hljs.highlightElement(headersOutput);
+        
+        try {
+            return JSON.parse(response.body);
+        } catch (e) { return null; }
     }
 }
 
