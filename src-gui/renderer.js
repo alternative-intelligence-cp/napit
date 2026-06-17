@@ -478,6 +478,142 @@ copySnippetBtn.addEventListener('click', async () => {
 
 // --- Editor Syntax Highlighting & Sync ---
 const editorHighlight = document.getElementById('editorHighlight');
+const autocompleteMenu = document.getElementById('autocompleteMenu');
+let autocompleteActive = false;
+let autocompleteIndex = 0;
+let autocompletePrefix = "";
+let autocompleteStartIdx = 0;
+let filteredVars = [];
+
+function getCaretCoordinates(element, position) {
+    const div = document.createElement('div');
+    const computed = window.getComputedStyle(element);
+    
+    // Copy necessary styles for text measurement
+    ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'boxSizing'].forEach(prop => {
+        div.style[prop] = computed[prop];
+    });
+    
+    div.style.position = 'absolute';
+    div.style.visibility = 'hidden';
+    div.style.whiteSpace = 'pre-wrap';
+    div.style.wordWrap = 'break-word';
+    div.style.width = computed.width;
+    
+    div.textContent = element.value.substring(0, position);
+    
+    const span = document.createElement('span');
+    span.textContent = element.value.substring(position) || '.';
+    div.appendChild(span);
+    
+    document.body.appendChild(div);
+    const coordinates = {
+        top: span.offsetTop + parseInt(computed.borderTopWidth || 0),
+        left: span.offsetLeft + parseInt(computed.borderLeftWidth || 0),
+        height: parseInt(computed.lineHeight || computed.fontSize)
+    };
+    document.body.removeChild(div);
+    return coordinates;
+}
+
+function showAutocomplete() {
+    const selectedEnv = envSelect.value;
+    if (!selectedEnv || !environments[selectedEnv]) return hideAutocomplete();
+    
+    const envVars = Object.keys(environments[selectedEnv]);
+    filteredVars = envVars.filter(v => v.toLowerCase().startsWith(autocompletePrefix.toLowerCase()));
+    
+    if (filteredVars.length === 0) return hideAutocomplete();
+    
+    autocompleteMenu.innerHTML = '';
+    filteredVars.forEach((v, idx) => {
+        const li = document.createElement('li');
+        li.textContent = v;
+        if (idx === autocompleteIndex) li.classList.add('selected');
+        li.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // prevent editor blur
+            insertAutocomplete(v);
+        });
+        autocompleteMenu.appendChild(li);
+    });
+    
+    const coords = getCaretCoordinates(editor, editor.selectionStart);
+    const rect = editor.getBoundingClientRect();
+    
+    autocompleteMenu.style.top = `${rect.top - editor.scrollTop + coords.top + coords.height + 5}px`;
+    autocompleteMenu.style.left = `${rect.left - editor.scrollLeft + coords.left}px`;
+    autocompleteMenu.style.display = 'block';
+    autocompleteActive = true;
+}
+
+function hideAutocomplete() {
+    autocompleteMenu.style.display = 'none';
+    autocompleteActive = false;
+    autocompleteIndex = 0;
+}
+
+function insertAutocomplete(val) {
+    const currentPos = editor.selectionStart;
+    const textBefore = editor.value.substring(0, autocompleteStartIdx);
+    const textAfter = editor.value.substring(currentPos);
+    
+    editor.value = textBefore + val + '}}' + textAfter;
+    editor.selectionStart = editor.selectionEnd = autocompleteStartIdx + val.length + 2;
+    hideAutocomplete();
+    updateEditorHighlight();
+}
+
+editor.addEventListener('input', () => {
+    updateEditorHighlight();
+    
+    // Autocomplete detection
+    const textUpToCursor = editor.value.substring(0, editor.selectionStart);
+    const match = textUpToCursor.match(/\{\{([a-zA-Z0-9_]*)$/);
+    if (match) {
+        autocompletePrefix = match[1];
+        autocompleteStartIdx = editor.selectionStart - autocompletePrefix.length;
+        showAutocomplete();
+    } else {
+        hideAutocomplete();
+    }
+    if (currentActiveFile) saveBtn.disabled = false;
+});
+
+editor.addEventListener('keydown', (e) => {
+    if (autocompleteActive) {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            autocompleteIndex = (autocompleteIndex + 1) % filteredVars.length;
+            showAutocomplete();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            autocompleteIndex = (autocompleteIndex - 1 + filteredVars.length) % filteredVars.length;
+            showAutocomplete();
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            insertAutocomplete(filteredVars[autocompleteIndex]);
+        } else if (e.key === 'Escape') {
+            hideAutocomplete();
+        }
+    } else {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            editor.value = editor.value.substring(0, start) + "    " + editor.value.substring(end);
+            editor.selectionStart = editor.selectionEnd = start + 4;
+            updateEditorHighlight();
+        }
+    }
+});
+
+// Hide autocomplete on blur/click outside
+editor.addEventListener('blur', hideAutocomplete);
+document.addEventListener('mousedown', (e) => {
+    if (e.target !== editor && !autocompleteMenu.contains(e.target)) {
+        hideAutocomplete();
+    }
+});
 
 // Initialize highlight
 hljs.registerLanguage('graphql', window.hljsBuiltin?.graphql || (() => {})); // Just in case it's packaged differently, though vendor script handles it
@@ -510,12 +646,6 @@ function updateEditorHighlight() {
 editor.addEventListener('scroll', () => {
     editorHighlight.scrollTop = editor.scrollTop;
     editorHighlight.scrollLeft = editor.scrollLeft;
-});
-
-// Update highlighting on input
-editor.addEventListener('input', () => {
-    updateEditorHighlight();
-    if (currentActiveFile) saveBtn.disabled = false;
 });
 
 // Initialize highlight
