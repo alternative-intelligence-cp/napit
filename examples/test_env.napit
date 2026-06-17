@@ -1,0 +1,3 @@
+GET https://httpbin.org/get
+Authorization: Bearer {{TEST_TOKEN}}
+

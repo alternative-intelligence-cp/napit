@@ -1,0 +1,11 @@
+{
+  "args": {}, 
+  "headers": {
+    "Accept": "*/*", 
+    "Authorization": "Bearer secret_token_123", 
+    "Host": "httpbin.org", 
+    "X-Amzn-Trace-Id": "Root=1-6a32f1b4-126780c722ef07e55eaa8477"
+  }, 
+  "origin": "71.62.68.62", 
+  "url": "https://httpbin.org/get"
+}

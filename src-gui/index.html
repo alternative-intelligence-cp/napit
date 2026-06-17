@@ -68,6 +68,77 @@
             position: relative;
         }
 
+        .sidebar {
+            width: 260px;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            margin-bottom: 15px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-btn {
+            background: transparent;
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .sidebar-btn:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .file-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .file-item {
+            padding: 8px 10px;
+            font-size: 13px;
+            color: var(--text-dim);
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.1s ease, color 0.1s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+        }
+
+        .file-item.active {
+            background: rgba(0, 122, 204, 0.2);
+            color: var(--text-main);
+            border-left: 3px solid var(--accent-color);
+        }
+
         .pane:last-child {
             border-right: none;
         }
@@ -82,6 +153,11 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
         }
 
         textarea {
@@ -102,7 +178,7 @@
             border-color: var(--accent-color);
         }
 
-        button.send-btn {
+        button.primary-btn {
             background: var(--accent-color);
             color: white;
             border: none;
@@ -115,12 +191,29 @@
             transition: background 0.2s ease, transform 0.1s ease;
         }
 
-        button.send-btn:hover {
+        button.primary-btn:hover {
             background: var(--accent-hover);
         }
 
-        button.send-btn:active {
+        button.primary-btn:active {
             transform: scale(0.97);
+        }
+        
+        button.secondary-btn {
+            background: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        button.secondary-btn:hover {
+            background: rgba(255,255,255,0.05);
         }
 
         .response-container {
@@ -156,11 +249,23 @@
     </header>
 
     <div class="main-container">
-        <!-- Left Pane: Markdown Request Editor -->
-        <div class="pane">
+        <!-- Sidebar: Workspace Explorer -->
+        <div class="sidebar">
+            <div class="sidebar-header">Workspace</div>
+            <button id="openFolderBtn" class="sidebar-btn">Open Folder</button>
+            <ul id="fileList" class="file-list">
+                <!-- File items populate here -->
+            </ul>
+        </div>
+
+        <!-- Middle Pane: Markdown Request Editor -->
+        <div class="pane" style="flex: 1.2;">
             <div class="pane-header">
                 Request Editor
-                <button id="sendBtn" class="send-btn">Send Request</button>
+                <div class="btn-group">
+                    <button id="saveBtn" class="secondary-btn" disabled>Save</button>
+                    <button id="sendBtn" class="primary-btn">Send Request</button>
+                </div>
             </div>
             <textarea id="editor" spellcheck="false">```http
 GET https://httpbin.org/get

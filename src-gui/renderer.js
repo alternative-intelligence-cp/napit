@@ -1,8 +1,79 @@
 const btn = document.getElementById('sendBtn');
+const saveBtn = document.getElementById('saveBtn');
+const openFolderBtn = document.getElementById('openFolderBtn');
+const fileList = document.getElementById('fileList');
 const output = document.getElementById('output');
 const editor = document.getElementById('editor');
 const statusBadge = document.getElementById('statusBadge');
 
+let currentActiveFile = null;
+
+// --- Sidebar Logic ---
+openFolderBtn.addEventListener('click', async () => {
+    const files = await window.api.openDirectory();
+    if (!files) return; // User canceled
+    
+    fileList.innerHTML = '';
+    
+    if (files.length === 0) {
+        fileList.innerHTML = '<li class="file-item" style="cursor:default">No .napit files found</li>';
+        return;
+    }
+    
+    files.forEach(f => {
+        const li = document.createElement('li');
+        li.className = 'file-item';
+        li.textContent = f.relativePath;
+        li.title = f.path;
+        
+        li.addEventListener('click', async () => {
+            // Load file content
+            const content = await window.api.readFile(f.path);
+            editor.value = content;
+            
+            // Update UI state
+            document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
+            li.classList.add('active');
+            
+            currentActiveFile = f.path;
+            saveBtn.disabled = false;
+        });
+        
+        fileList.appendChild(li);
+    });
+});
+
+// --- Editor Logic ---
+saveBtn.addEventListener('click', async () => {
+    if (!currentActiveFile) return;
+    
+    const originalText = saveBtn.textContent;
+    saveBtn.textContent = 'Saving...';
+    saveBtn.disabled = true;
+    
+    try {
+        await window.api.saveFile(currentActiveFile, editor.value);
+        saveBtn.textContent = 'Saved!';
+        setTimeout(() => {
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+        }, 1500);
+    } catch (e) {
+        saveBtn.textContent = 'Error';
+        console.error(e);
+        setTimeout(() => {
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+        }, 2000);
+    }
+});
+
+// Enable save button automatically on typing if a file is open
+editor.addEventListener('input', () => {
+    if (currentActiveFile) saveBtn.disabled = false;
+});
+
+// --- Request Logic ---
 btn.addEventListener('click', async () => {
     output.style.color = 'var(--text-dim)';
     output.textContent = "Loading...\nSending native request via Nitpick bridge...";

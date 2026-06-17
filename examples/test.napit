@@ -1,0 +1,4 @@
+```http
+GET https://httpbin.org/get
+User-Agent: Napit/0.3.0
+```
