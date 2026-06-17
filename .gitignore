@@ -1,0 +1,22 @@
+# Build outputs
+build/
+.build/
+*.o
+*.so
+*.a
+a.out*
+*.bak
+
+# Binaries
+napit
+napit-*
+
+# Editor
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
