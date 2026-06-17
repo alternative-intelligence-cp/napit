@@ -12,6 +12,95 @@ let currentActiveFile = null;
 let environments = {};
 let currentWorkspacePath = null;
 
+let openFiles = [];
+let currentTabIndex = -1;
+const editorTabs = document.getElementById('editorTabs');
+
+function renderTabs() {
+    editorTabs.innerHTML = '';
+    if (openFiles.length === 0) {
+        editorTabs.innerHTML = '<div style="font-size: 13px; color: var(--text-dim); padding: 4px;">No File Open</div>';
+        editor.value = '';
+        currentActiveFile = null;
+        saveBtn.disabled = true;
+        updateEditorHighlight();
+        return;
+    }
+    
+    openFiles.forEach((file, index) => {
+        const tab = document.createElement('div');
+        tab.className = `editor-tab ${index === currentTabIndex ? 'active' : ''}`;
+        
+        const title = document.createElement('span');
+        title.textContent = file.name + (file.saved ? '' : ' *');
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'close-tab-btn';
+        closeBtn.innerHTML = '&times;';
+        
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeTab(index);
+        });
+        
+        tab.appendChild(title);
+        tab.appendChild(closeBtn);
+        
+        tab.addEventListener('click', () => switchTab(index));
+        editorTabs.appendChild(tab);
+    });
+}
+
+function switchTab(index) {
+    if (index < 0 || index >= openFiles.length) return;
+    
+    // Save current editor content to the outgoing tab
+    if (currentTabIndex !== -1 && openFiles[currentTabIndex]) {
+        openFiles[currentTabIndex].content = editor.value;
+    }
+    
+    currentTabIndex = index;
+    currentActiveFile = openFiles[index].path;
+    editor.value = openFiles[index].content;
+    
+    saveBtn.disabled = openFiles[index].saved;
+    
+    renderTabs();
+    updateEditorHighlight();
+    
+    // Update sidebar UI state
+    document.querySelectorAll('.file-item').forEach(el => {
+        if (el.title === currentActiveFile) {
+            el.classList.add('active');
+        } else {
+            el.classList.remove('active');
+        }
+    });
+}
+
+function closeTab(index) {
+    if (!openFiles[index].saved) {
+        if (!confirm('You have unsaved changes. Close anyway?')) return;
+    }
+    
+    openFiles.splice(index, 1);
+    
+    if (openFiles.length === 0) {
+        currentTabIndex = -1;
+        renderTabs();
+        document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
+    } else {
+        if (index === currentTabIndex) {
+            switchTab(Math.max(0, index - 1));
+        } else if (index < currentTabIndex) {
+            currentTabIndex--;
+            renderTabs();
+        } else {
+            renderTabs();
+        }
+    }
+}
+
 // --- Sidebar Logic ---
 openFolderBtn.addEventListener('click', async () => {
     const result = await window.api.openDirectory();
@@ -52,16 +141,22 @@ openFolderBtn.addEventListener('click', async () => {
         li.title = f.path;
         
         li.addEventListener('click', async () => {
+            // Check if already open
+            let existingIdx = openFiles.findIndex(of => of.path === f.path);
+            if (existingIdx !== -1) {
+                switchTab(existingIdx);
+                return;
+            }
+            
             // Load file content
             const content = await window.api.readFile(f.path);
-            editor.value = content;
-            
-            // Update UI state
-            document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
-            li.classList.add('active');
-            
-            currentActiveFile = f.path;
-            saveBtn.disabled = false;
+            openFiles.push({
+                path: f.path,
+                name: f.name,
+                content: content,
+                saved: true
+            });
+            switchTab(openFiles.length - 1);
         });
         
         fileList.appendChild(li);
@@ -70,7 +165,7 @@ openFolderBtn.addEventListener('click', async () => {
 
 // --- Editor Logic ---
 saveBtn.addEventListener('click', async () => {
-    if (!currentActiveFile) return;
+    if (!currentActiveFile || currentTabIndex === -1) return;
     
     const originalText = saveBtn.textContent;
     saveBtn.textContent = 'Saving...';
@@ -78,10 +173,14 @@ saveBtn.addEventListener('click', async () => {
     
     try {
         await window.api.saveFile(currentActiveFile, editor.value);
+        
+        openFiles[currentTabIndex].content = editor.value;
+        openFiles[currentTabIndex].saved = true;
+        renderTabs();
+        
         saveBtn.textContent = 'Saved!';
         setTimeout(() => {
             saveBtn.textContent = originalText;
-            saveBtn.disabled = false;
         }, 1500);
     } catch (e) {
         saveBtn.textContent = 'Error';
@@ -95,7 +194,13 @@ saveBtn.addEventListener('click', async () => {
 
 // Enable save button automatically on typing if a file is open
 editor.addEventListener('input', () => {
-    if (currentActiveFile) saveBtn.disabled = false;
+    if (currentTabIndex !== -1) {
+        if (openFiles[currentTabIndex].saved) {
+            openFiles[currentTabIndex].saved = false;
+            renderTabs();
+            saveBtn.disabled = false;
+        }
+    }
 });
 
 // --- Request Execution Logic ---
@@ -478,6 +583,211 @@ copySnippetBtn.addEventListener('click', async () => {
     setTimeout(() => copySnippetBtn.textContent = originalText, 1500);
 });
 
+// --- Environment Manager Logic ---
+const envModal = document.getElementById('envModal');
+const closeEnvModalBtn = document.getElementById('closeEnvModalBtn');
+const manageEnvBtn = document.getElementById('manageEnvBtn');
+const addEnvBtn = document.getElementById('addEnvBtn');
+const envList = document.getElementById('envList');
+const varList = document.getElementById('varList');
+const varListHeader = document.getElementById('varListHeader');
+const addVarBtn = document.getElementById('addVarBtn');
+const deleteEnvBtn = document.getElementById('deleteEnvBtn');
+const saveEnvBtn = document.getElementById('saveEnvBtn');
+
+let editingEnvironments = {};
+let selectedEnvToEdit = null;
+
+manageEnvBtn.addEventListener('click', () => {
+    editingEnvironments = JSON.parse(JSON.stringify(environments));
+    selectedEnvToEdit = null;
+    renderEnvManager();
+    renderVarManager();
+    envModal.style.display = 'flex';
+});
+
+closeEnvModalBtn.addEventListener('click', () => {
+    envModal.style.display = 'none';
+});
+
+function renderEnvManager() {
+    envList.innerHTML = '';
+    const keys = Object.keys(editingEnvironments);
+    keys.forEach(envName => {
+        const li = document.createElement('li');
+        li.className = `file-item ${envName === selectedEnvToEdit ? 'active' : ''}`;
+        li.textContent = envName;
+        li.addEventListener('click', () => {
+            selectedEnvToEdit = envName;
+            renderEnvManager();
+            renderVarManager();
+        });
+        envList.appendChild(li);
+    });
+    
+    if (selectedEnvToEdit) {
+        deleteEnvBtn.style.display = 'block';
+        addVarBtn.disabled = false;
+        varListHeader.textContent = `Variables in ${selectedEnvToEdit}`;
+    } else {
+        deleteEnvBtn.style.display = 'none';
+        addVarBtn.disabled = true;
+        varListHeader.textContent = `Variables`;
+    }
+}
+
+function renderVarManager() {
+    varList.innerHTML = '';
+    if (!selectedEnvToEdit) {
+        varList.innerHTML = '<div style="color: var(--text-dim); font-size: 13px;">Select an environment to edit its variables.</div>';
+        return;
+    }
+    
+    const envVars = editingEnvironments[selectedEnvToEdit];
+    const keys = Object.keys(envVars);
+    
+    if (keys.length === 0) {
+        varList.innerHTML = '<div style="color: var(--text-dim); font-size: 13px;">No variables defined. Click + Add to create one.</div>';
+        return;
+    }
+    
+    keys.forEach(key => {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.gap = '8px';
+        
+        const keyInput = document.createElement('input');
+        keyInput.className = 'chat-input';
+        keyInput.style.flex = '1';
+        keyInput.value = key;
+        
+        const valInput = document.createElement('input');
+        valInput.className = 'chat-input';
+        valInput.style.flex = '2';
+        valInput.value = envVars[key];
+        
+        const delBtn = document.createElement('button');
+        delBtn.innerHTML = '&times;';
+        delBtn.style.background = 'none';
+        delBtn.style.border = 'none';
+        delBtn.style.color = 'var(--error-color)';
+        delBtn.style.cursor = 'pointer';
+        delBtn.style.fontSize = '16px';
+        
+        keyInput.addEventListener('change', () => {
+            const newKey = keyInput.value.trim();
+            if (newKey && newKey !== key) {
+                envVars[newKey] = envVars[key];
+                delete envVars[key];
+                renderVarManager();
+            }
+        });
+        
+        valInput.addEventListener('input', () => {
+            envVars[keyInput.value.trim()] = valInput.value;
+        });
+        
+        delBtn.addEventListener('click', () => {
+            delete envVars[key];
+            renderVarManager();
+        });
+        
+        row.appendChild(keyInput);
+        row.appendChild(valInput);
+        row.appendChild(delBtn);
+        varList.appendChild(row);
+    });
+}
+
+addEnvBtn.addEventListener('click', () => {
+    const name = prompt('Environment Name (e.g. dev, prod):');
+    if (name && name.trim()) {
+        const trimmed = name.trim();
+        if (!editingEnvironments[trimmed]) {
+            editingEnvironments[trimmed] = {};
+        }
+        selectedEnvToEdit = trimmed;
+        renderEnvManager();
+        renderVarManager();
+    }
+});
+
+addVarBtn.addEventListener('click', () => {
+    if (!selectedEnvToEdit) return;
+    let newKey = 'NEW_VAR';
+    let counter = 1;
+    while (editingEnvironments[selectedEnvToEdit][newKey] !== undefined) {
+        newKey = `NEW_VAR_${counter}`;
+        counter++;
+    }
+    editingEnvironments[selectedEnvToEdit][newKey] = '';
+    renderVarManager();
+});
+
+deleteEnvBtn.addEventListener('click', () => {
+    if (!selectedEnvToEdit) return;
+    if (confirm(`Delete environment '${selectedEnvToEdit}'?`)) {
+        delete editingEnvironments[selectedEnvToEdit];
+        selectedEnvToEdit = null;
+        renderEnvManager();
+        renderVarManager();
+    }
+});
+
+// Helper for cross-platform path joining
+function joinPath(p1, p2) {
+    if (p1.endsWith('/') || p1.endsWith('\\')) return p1 + p2;
+    return p1 + '/' + p2;
+}
+
+saveEnvBtn.addEventListener('click', async () => {
+    if (!currentWorkspacePath) return;
+    
+    const envFilePath = joinPath(currentWorkspacePath, 'napit.env.json');
+    try {
+        const originalText = saveEnvBtn.textContent;
+        saveEnvBtn.textContent = 'Saving...';
+        saveEnvBtn.disabled = true;
+        
+        await window.api.saveFile(envFilePath, JSON.stringify(editingEnvironments, null, 2));
+        environments = editingEnvironments;
+        
+        const currentSelection = envSelect.value;
+        const envKeys = Object.keys(environments);
+        if (envKeys.length > 0) {
+            envSelect.innerHTML = '<option value="" style="background: #121212; color: #fff;">No Environment</option>';
+            envKeys.forEach(envName => {
+                const opt = document.createElement('option');
+                opt.value = envName;
+                opt.textContent = envName;
+                opt.style.background = '#121212';
+                opt.style.color = '#ffffff';
+                envSelect.appendChild(opt);
+            });
+            envContainer.style.display = 'block';
+            if (envKeys.includes(currentSelection)) {
+                envSelect.value = currentSelection;
+            }
+        } else {
+            envSelect.innerHTML = '<option value="">No Environment</option>';
+            // Don't hide the container so they can still click Manage
+            envContainer.style.display = 'block'; 
+        }
+        
+        saveEnvBtn.textContent = 'Saved!';
+        setTimeout(() => {
+            saveEnvBtn.textContent = originalText;
+            saveEnvBtn.disabled = false;
+            envModal.style.display = 'none';
+        }, 1000);
+        
+    } catch (e) {
+        alert("Failed to save: " + e.message);
+        saveEnvBtn.disabled = false;
+        saveEnvBtn.textContent = 'Save Changes to napit.env.json';
+    }
+});
+
 // --- Editor Syntax Highlighting & Sync ---
 const editorHighlight = document.getElementById('editorHighlight');
 const autocompleteMenu = document.getElementById('autocompleteMenu');
@@ -655,6 +965,7 @@ updateEditorHighlight();
 // --- AI Chat Logic ---
 const toggleAiBtn = document.getElementById('toggleAiBtn');
 const closeAiBtn = document.getElementById('closeAiBtn');
+const clearChatBtn = document.getElementById('clearChatBtn');
 const aiSidebar = document.getElementById('aiSidebar');
 const chatHistory = document.getElementById('chatHistory');
 const chatInput = document.getElementById('chatInput');
@@ -678,6 +989,13 @@ toggleAiBtn.addEventListener('click', () => {
 
 closeAiBtn.addEventListener('click', () => {
     aiSidebar.style.display = 'none';
+});
+
+clearChatBtn.addEventListener('click', () => {
+    aiMessageHistory = [
+        { role: 'system', content: 'You are an autonomous AI Agent embedded inside Napit (an Electron desktop app for making HTTP/GraphQL requests). You can write .napit files directly into the workspace using the write_file tool. Your goal is to help the user design and test API requests.' }
+    ];
+    chatHistory.innerHTML = '<div class="chat-bubble assistant">Chat cleared. How can I help you write requests today?</div>';
 });
 
 function appendChatBubble(role, content) {

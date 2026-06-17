@@ -228,6 +228,41 @@
             z-index: 2;
         }
 
+        .editor-tab {
+            padding: 6px 12px;
+            font-size: 12px;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-dim);
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .editor-tab.active {
+            background: rgba(0, 122, 204, 0.2);
+            color: var(--text-main);
+            border-color: var(--accent-color);
+        }
+
+        .editor-tab .close-tab-btn {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            font-size: 14px;
+            opacity: 0.6;
+        }
+
+        .editor-tab .close-tab-btn:hover {
+            opacity: 1;
+            color: var(--error-color);
+        }
+
         button.primary-btn {
             background: var(--accent-color);
             color: #fff;
@@ -373,7 +408,10 @@
             <button id="openFolderBtn" class="sidebar-btn">Open Folder</button>
             
             <div id="envContainer" style="display: none; margin-bottom: 15px;">
-                <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase;">Environment</div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase;">Environment</div>
+                    <button id="manageEnvBtn" style="background: none; border: none; color: var(--accent-color); font-size: 11px; cursor: pointer; padding: 0;">Manage</button>
+                </div>
                 <select id="envSelect" style="width: 100%; background: transparent; border: 1px solid var(--border-color); color: var(--text-main); padding: 6px; border-radius: 4px; outline: none; font-family: 'Inter', sans-serif; font-size: 12px; cursor: pointer;">
                     <option value="" style="background: #121212; color: #fff;">No Environment</option>
                 </select>
@@ -386,8 +424,10 @@
 
         <!-- Middle Pane: Markdown Request Editor -->
         <div class="pane" style="flex: 1.2;">
-            <div class="pane-header">
-                Request Editor
+            <div class="pane-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 10px;">
+                <div id="editorTabs" style="display:flex; gap:8px; overflow-x:auto; flex: 1; margin-right: 15px; align-items: flex-end;">
+                    <div style="font-size: 13px; color: var(--text-dim); padding: 4px;">No File Open</div>
+                </div>
                 <div class="btn-group">
                     <button id="generateCodeBtn" class="secondary-btn">Generate Code</button>
                     <button id="copyCurlBtn" class="secondary-btn">Copy as cURL</button>
@@ -422,7 +462,10 @@ User-Agent: Napit-GUI/0.5.0
         <div id="aiSidebar" class="sidebar" style="display: none; width: 320px; border-left: 1px solid var(--border-color); border-right: none; background: var(--bg-color);">
             <div class="sidebar-header" style="justify-content: space-between;">
                 <span>✨ AI Agent</span>
-                <button id="closeAiBtn" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:16px;">&times;</button>
+                <div>
+                    <button id="clearChatBtn" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; margin-right: 10px;" title="Clear Chat">🗑️</button>
+                    <button id="closeAiBtn" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:16px;">&times;</button>
+                </div>
             </div>
             <div class="chat-container">
                 <div id="chatHistory" class="chat-history">
@@ -456,6 +499,39 @@ User-Agent: Napit-GUI/0.5.0
             </div>
             <div class="modal-footer">
                 <button id="copySnippetBtn" class="primary-btn">Copy to Clipboard</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Environment Manager Modal -->
+    <div id="envModal" class="modal-overlay" style="display: none;">
+        <div class="modal" style="max-width: 600px; width: 100%;">
+            <div class="modal-header">
+                <h3>Environment Manager</h3>
+                <button id="closeEnvModalBtn" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body" style="display: flex; gap: 15px; height: 350px;">
+                <div style="flex: 1; border-right: 1px solid var(--border-color); padding-right: 15px; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4>Environments</h4>
+                        <button id="addEnvBtn" class="secondary-btn" style="padding: 4px 8px; font-size: 11px;">+ Add</button>
+                    </div>
+                    <ul id="envList" class="file-list" style="flex: 1; overflow-y: auto;"></ul>
+                </div>
+                <div style="flex: 2; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4 id="varListHeader">Variables</h4>
+                        <button id="addVarBtn" class="secondary-btn" style="padding: 4px 8px; font-size: 11px;" disabled>+ Add</button>
+                    </div>
+                    <div id="varList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                        <div style="color: var(--text-dim); font-size: 13px;">Select an environment to edit its variables.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: space-between;">
+                <button id="deleteEnvBtn" class="secondary-btn" style="color: var(--error-color); border-color: var(--error-color); display: none;">Delete Selected Env</button>
+                <div style="flex: 1;"></div>
+                <button id="saveEnvBtn" class="primary-btn">Save Changes to napit.env.json</button>
             </div>
         </div>
     </div>
