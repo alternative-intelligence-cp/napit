@@ -26,7 +26,9 @@ btn.addEventListener('click', async () => {
                 // Ignore, just use raw text
             }
             
-            output.textContent = `--- Status ---\n${response.status}\n\n--- Headers ---\n${response.headers.trim()}\n\n--- Body ---\n${bodyText}`;
+            let headersText = response.headers ? response.headers.trim() : "Headers not yet supported by native bridge";
+            
+            output.textContent = `--- Status ---\n${response.status}\n\n--- Headers ---\n${headersText}\n\n--- Body ---\n${bodyText}`;
         }
     } catch (err) {
         output.textContent = `IPC Exception: ${err}`;

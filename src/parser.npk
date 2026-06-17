@@ -20,7 +20,96 @@ func:_read_file = string(string:path) {
     pass(content);
 };
 
-pub func:parse_request = Request(string:file_path) {
+func:getenv_file = string(string:key, string:env_file) {
+    if (string_length(env_file) == 0i64) { pass(""); }
+    int64:fp = fopen(env_file, "r");
+    if (fp == 0i64) { pass(""); }
+    
+    string:result = "";
+    string:current = "";
+    int32:c = fgetc(fp);
+    while (c >= 0i32) {
+        if (c == 10i32) {
+            string:prefix = string_concat(key, "=");
+            if (string_starts_with(current, prefix)) {
+                int64:len = string_length(current);
+                int64:plen = string_length(prefix);
+                result = string_substring(current, plen, len);
+                break;
+            }
+            current = "";
+        } else {
+            if (c != 13i32) {
+                current = string_concat(current, string_from_char(@cast_unchecked<int8>(c)));
+            }
+        }
+        c = fgetc(fp);
+    }
+    drop(fclose(fp));
+    
+    if (string_length(result) == 0i64 && string_length(current) > 0i64) {
+        string:prefix = string_concat(key, "=");
+        if (string_starts_with(current, prefix)) {
+            int64:len = string_length(current);
+            int64:plen = string_length(prefix);
+            result = string_substring(current, plen, len);
+        }
+    }
+    
+    pass(result);
+};
+
+func:getenv_proc = string(string:key) {
+    int64:fp = fopen("/proc/self/environ", "r");
+    if (fp == 0i64) { pass(""); }
+    
+    string:result = "";
+    string:current = "";
+    int32:c = fgetc(fp);
+    while (c >= 0i32) {
+        if (c == 0i32) {
+            string:prefix = string_concat(key, "=");
+            if (string_starts_with(current, prefix)) {
+                int64:len = string_length(current);
+                int64:plen = string_length(prefix);
+                result = string_substring(current, plen, len);
+                break;
+            }
+            current = "";
+        } else {
+            current = string_concat(current, string_from_char(@cast_unchecked<int8>(c)));
+        }
+        c = fgetc(fp);
+    }
+    drop(fclose(fp));
+    pass(result);
+};
+
+func:replace_env_vars = string(string:input, string:env_file) {
+    string:result = input;
+    while (1i32 == 1i32) {
+        int64:idx1 = string_index_of(result, "{{");
+        if (idx1 < 0i64) { break; }
+        
+        string:after_open = string_substring(result, idx1 + 2i64, string_length(result));
+        int64:idx2 = string_index_of(after_open, "}}");
+        if (idx2 < 0i64) { break; }
+        
+        string:var_name = string_substring(after_open, 0i64, idx2);
+        string:var_val = raw getenv_file(var_name, env_file);
+        if (string_length(var_val) == 0i64) {
+            var_val = raw getenv_proc(var_name);
+        }
+        
+        string:before = string_substring(result, 0i64, idx1);
+        string:after_close = string_substring(after_open, idx2 + 2i64, string_length(after_open));
+        
+        result = string_concat(before, string_concat(var_val, after_close));
+    }
+    pass(result);
+};
+
+pub func:parse_request = Request(string:file_path, string:env_file) {
     Request:req = raw Request_create("GET", "");
     
     string:content = raw _read_file(file_path);
@@ -77,7 +166,11 @@ pub func:parse_request = Request(string:file_path) {
         i = i + 1i64;
     }
     
-    req = raw Request_set_body(req, body_content);
+    req.body = body_content;
     
+    req.url = raw replace_env_vars(req.url, env_file);
+    req.headers_pipe = raw replace_env_vars(req.headers_pipe, env_file);
+    req.body = raw replace_env_vars(req.body, env_file);
+
     pass(req);
 };

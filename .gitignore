@@ -1,21 +1,18 @@
-# Build outputs
-build/
-.build/
+# Nitpick
 *.o
-*.so
 *.a
-a.out*
-*.bak
+out.ll
+.nitpick_make/
+*.npk-pkg
 
-# Binaries
-napit
-napit-*
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
 
-# Editor
-.vscode/
-*.swp
-*.swo
-*~
+# Electron
+dist/
+release/
 
 # OS
 .DS_Store

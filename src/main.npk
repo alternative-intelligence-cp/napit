@@ -1,11 +1,17 @@
+extern "napit_shim" {
+    func:napit_write_file2 = int32(string:path, string:content, int64:content_len);
+}
+
 extern "libc" {
     func:fopen  = int64(string:path, string:mode);
     func:fgetc  = int32(int64:fp);
     func:fclose = int32(int64:fp);
+    func:fputs  = int32(string:s, int64:fp);
 }
 
 use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-args/src/nitpick_args.npk".*;
 use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-api/src/types.npk".*;
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-str/src/nitpick_str.npk".*;
 use "parser.npk".*;
 
 use "dispatcher.npk".*;
@@ -41,10 +47,13 @@ pub func:main = int32() {
     int32:count = raw args_count(args);
 
     if (raw args_has(args, "--help")) {
-        print("Usage: napit [options] <request_file>\n\n");
+        print("Usage: napit <request_file> [options]\n\n");
         print("Options:\n");
-        print("  --help     Show this help message\n");
-        print("  --version  Show version information\n");
+        print("  --output <file> Save response body to file\n");
+        print("  --env <file>    Load variables from .env file\n");
+        print("  --verbose, -v   Print verbose outgoing request details\n");
+        print("  --help          Show this help message\n");
+        print("  --version       Show version information\n");
         exit(0i32);
     }
 
@@ -60,15 +69,49 @@ pub func:main = int32() {
     }
 
     string:file_path = raw args_at(args, 1i32);
+    if (string_starts_with(file_path, "--")) {
+        print("Error: The first argument must be the request file.\n");
+        exit(1i32);
+    }
+    
+    string:output_file = raw args_get(args, "--output");
+    string:env_file = raw args_get(args, "--env");
+    int32:verbose = 0i32;
+    if (raw args_has(args, "--verbose")) { verbose = 1i32; }
+    if (raw args_has(args, "-v")) { verbose = 1i32; }
+
     print("Executing request from: ");
     print(file_path);
     print("\n");
     
-    Request:req = raw parse_request(file_path);
+    Request:req = raw parse_request(file_path, env_file);
+    
+    if (verbose == 1i32) {
+        print("\n--- Outgoing Request ---\n");
+        print(req.method); print(" "); print(req.url); print("\n");
+        string:disp_headers = raw Str.replace_all(req.headers_pipe, "|", "\n");
+        if (string_length(disp_headers) > 0i64) {
+            print(disp_headers); print("\n");
+        }
+        if (string_length(req.body) > 0i64) {
+            print("\n"); print(req.body); print("\n");
+        }
+        print("------------------------\n\n");
+    }
+
     print("Dispatching request to "); print(req.url); print("...\n\n");
     
     Response:res = raw dispatch_request(req);
     raw format_response(res);
+
+    if (string_length(output_file) > 0i64) {
+        int32:res_write = napit_write_file2(output_file, res.body, string_length(res.body));
+        if (res_write == 1i32) {
+            print("Response body saved to: "); print(output_file); print("\n");
+        } else {
+            print("Error: Could not open output file for writing.\n");
+        }
+    }
 
     exit 0;
 };
