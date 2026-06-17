@@ -1,0 +1,77 @@
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-cli/src/nitpick_cli.npk".*;
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-api/src/types.npk".*;
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-str/src/nitpick_str.npk".*;
+
+pub func:format_response = NIL(Response:res) {
+    print("\n");
+    print(raw Cli.hr(50i32, "-"));
+    print("\n");
+    
+    string:status_str = string_from_int(res.status);
+    string:status_color = "";
+    
+    if (res.status >= 200i32) {
+        if (res.status < 300i32) {
+            status_color = raw Cli.bright_green(status_str);
+        } else {
+            if (res.status >= 400i32) {
+                status_color = raw Cli.bright_red(status_str);
+            } else {
+                status_color = raw Cli.yellow(status_str);
+            }
+        }
+    } else {
+        status_color = raw Cli.yellow(status_str);
+    }
+    
+    print(raw Cli.bold("Status: "));
+    print(status_color);
+    print("\n\n");
+    
+    if (string_length(res.error) > 0i64) {
+        print(raw Cli.bold(raw Cli.red("Error: ")));
+        print(res.error);
+        print("\n\n");
+    }
+    
+    print(raw Cli.bold(raw Cli.blue("Headers:\n")));
+    int64:num_headers = raw Str.line_count(res.headers);
+    int64:i = 0i64;
+    while (i < num_headers) {
+        string:line = raw Str.token(res.headers, "\n", i);
+        if (string_length(string_trim(line)) > 0i64) {
+            int64:colon = string_index_of(line, ":");
+            if (colon > 0i64) {
+                string:key = raw Str.before(line, ":");
+                string:val = raw Str.after(line, ":");
+                print("  ");
+                print(raw Cli.cyan(string_trim(key)));
+                print(raw Cli.dim(": "));
+                print(string_trim(val));
+                print("\n");
+            } else {
+                print("  ");
+                print(raw Cli.dim(string_trim(line)));
+                print("\n");
+            }
+        }
+        i = i + 1i64;
+    }
+    print("\n");
+    
+    print(raw Cli.bold(raw Cli.magenta("Body:\n")));
+    int32:is_json = 0i32;
+    string:t_body = string_trim(res.body);
+    if (string_starts_with(t_body, "{")) { is_json = 1i32; }
+    if (string_starts_with(t_body, "[")) { is_json = 1i32; }
+    
+    if (is_json == 1i32) {
+        // Output body in yellow to stand out
+        print(raw Cli.yellow(res.body));
+    } else {
+        print(res.body);
+    }
+    print("\n");
+    
+    pass NIL;
+};

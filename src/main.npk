@@ -9,6 +9,7 @@ use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-api/src/types
 use "parser.npk".*;
 
 use "dispatcher.npk".*;
+use "formatter.npk".*;
 
 func:args_load = string() {
     int64:fp = fopen("/proc/self/cmdline", "r");
@@ -67,14 +68,7 @@ pub func:main = int32() {
     print("Dispatching request to "); print(req.url); print("...\n\n");
     
     Response:res = raw dispatch_request(req);
-    
-    print("--- HTTP RESPONSE ---\n");
-    print("Status: "); print(string_from_int(res.status)); print("\n");
-    if (string_length(res.error) > 0i64) {
-        print("Error: "); print(res.error); print("\n");
-    }
-    print("Headers:\n"); print(res.headers); print("\n");
-    print("Body:\n"); print(res.body); print("\n");
+    raw format_response(res);
 
     exit 0;
 };

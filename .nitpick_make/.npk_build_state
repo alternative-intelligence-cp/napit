@@ -7,11 +7,11 @@
   "targets": {
     "napit": {
       "artifact_path": ".nitpick_make/build/napit",
-      "source_hash": "fnv1a:1783228301791944341",
+      "source_hash": "fnv1a:3588183880031261986",
       "command_hash": 2066440654792407214,
-      "source_timestamp": 18446744069053609792,
-      "build_timestamp": 1781722182,
-      "build_duration_ms": 215,
+      "source_timestamp": 18446744069053609858,
+      "build_timestamp": 1781722268,
+      "build_duration_ms": 227,
       "dependencies": [],
       "implicit_inputs": []
     }
