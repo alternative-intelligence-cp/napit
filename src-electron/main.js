@@ -52,14 +52,29 @@ app.whenReady().then(() => {
             const apiFiles = allFiles.filter(f => f.endsWith('.napit') || f.endsWith('.md'));
             
             // Map to simple structure
-            return apiFiles.map(f => ({
-                path: f,
-                name: path.basename(f),
-                relativePath: path.relative(folderPath, f)
-            }));
+            return {
+                workspacePath: folderPath,
+                files: apiFiles.map(f => ({
+                    path: f,
+                    name: path.basename(f),
+                    relativePath: path.relative(folderPath, f)
+                }))
+            };
         } catch (e) {
             console.error(e);
-            return [];
+            return { workspacePath: folderPath, files: [] };
+        }
+    });
+
+    // Handle Load Environments
+    ipcMain.handle('api:loadEnvironments', async (event, workspacePath) => {
+        try {
+            const envFile = path.join(workspacePath, 'napit.env.json');
+            const content = await fs.readFile(envFile, 'utf8');
+            return JSON.parse(content);
+        } catch (e) {
+            // If file doesn't exist or is invalid JSON, return empty object
+            return {};
         }
     });
 

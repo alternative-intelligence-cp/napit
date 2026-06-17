@@ -253,6 +253,14 @@
         <div class="sidebar">
             <div class="sidebar-header">Workspace</div>
             <button id="openFolderBtn" class="sidebar-btn">Open Folder</button>
+            
+            <div id="envContainer" style="display: none; margin-bottom: 15px;">
+                <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase;">Environment</div>
+                <select id="envSelect" style="width: 100%; background: transparent; border: 1px solid var(--border-color); color: var(--text-main); padding: 6px; border-radius: 4px; outline: none; font-family: 'Inter', sans-serif; font-size: 12px; cursor: pointer;">
+                    <option value="">No Environment</option>
+                </select>
+            </div>
+
             <ul id="fileList" class="file-list">
                 <!-- File items populate here -->
             </ul>

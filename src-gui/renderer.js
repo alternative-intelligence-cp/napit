@@ -5,17 +5,38 @@ const fileList = document.getElementById('fileList');
 const output = document.getElementById('output');
 const editor = document.getElementById('editor');
 const statusBadge = document.getElementById('statusBadge');
+const envContainer = document.getElementById('envContainer');
+const envSelect = document.getElementById('envSelect');
 
 let currentActiveFile = null;
+let environments = {};
 
 // --- Sidebar Logic ---
 openFolderBtn.addEventListener('click', async () => {
-    const files = await window.api.openDirectory();
-    if (!files) return; // User canceled
+    const result = await window.api.openDirectory();
+    if (!result) return; // User canceled
     
+    const { workspacePath, files } = result;
     fileList.innerHTML = '';
     
-    if (files.length === 0) {
+    // Load environments
+    environments = await window.api.loadEnvironments(workspacePath);
+    const envKeys = Object.keys(environments);
+    if (envKeys.length > 0) {
+        envSelect.innerHTML = '<option value="">No Environment</option>';
+        envKeys.forEach(envName => {
+            const opt = document.createElement('option');
+            opt.value = envName;
+            opt.textContent = envName;
+            envSelect.appendChild(opt);
+        });
+        envContainer.style.display = 'block';
+    } else {
+        envContainer.style.display = 'none';
+        environments = {};
+    }
+    
+    if (!files || files.length === 0) {
         fileList.innerHTML = '<li class="file-item" style="cursor:default">No .napit files found</li>';
         return;
     }
@@ -81,7 +102,19 @@ btn.addEventListener('click', async () => {
     statusBadge.style.display = 'none';
 
     try {
-        const req = window.parseNapitFile(editor.value);
+        let rawText = editor.value;
+        const selectedEnv = envSelect.value;
+        
+        // Phase 3: Interpolation Pre-processor
+        if (selectedEnv && environments[selectedEnv]) {
+            const envVars = environments[selectedEnv];
+            rawText = rawText.replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
+                const key = varName.trim();
+                return envVars[key] !== undefined ? envVars[key] : match;
+            });
+        }
+        
+        const req = window.parseNapitFile(rawText);
         
         const response = await window.api.request(req);
         

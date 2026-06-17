@@ -1,3 +1,4 @@
-GET https://httpbin.org/get
-Authorization: Bearer {{TEST_TOKEN}}
-
+```http
+GET {{API_URL}}/get
+Authorization: Bearer {{TOKEN}}
+```
