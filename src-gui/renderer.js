@@ -10,6 +10,7 @@ const envSelect = document.getElementById('envSelect');
 
 let currentActiveFile = null;
 let environments = {};
+let currentWorkspacePath = null;
 
 // --- Sidebar Logic ---
 openFolderBtn.addEventListener('click', async () => {
@@ -17,6 +18,7 @@ openFolderBtn.addEventListener('click', async () => {
     if (!result) return; // User canceled
     
     const { workspacePath, files } = result;
+    currentWorkspacePath = workspacePath;
     fileList.innerHTML = '';
     
     // Load environments
@@ -662,16 +664,6 @@ const sendChatBtn = document.getElementById('sendChatBtn');
 let aiMessageHistory = [
     { role: 'system', content: 'You are an autonomous AI Agent embedded inside Napit (an Electron desktop app for making HTTP/GraphQL requests). You can write .napit files directly into the workspace using the write_file tool. Your goal is to help the user design and test API requests.' }
 ];
-
-let currentWorkspacePath = null;
-
-// Grab workspace path from existing file tree logic
-const originalOpenDirectory = window.api.openDirectory;
-window.api.openDirectory = async () => {
-    const result = await originalOpenDirectory();
-    if (result) currentWorkspacePath = result.workspacePath;
-    return result;
-};
 
 toggleAiBtn.addEventListener('click', () => {
     aiSidebar.style.display = aiSidebar.style.display === 'none' ? 'flex' : 'none';
