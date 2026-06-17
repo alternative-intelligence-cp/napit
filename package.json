@@ -2,11 +2,12 @@
   "name": "napit",
   "version": "1.0.0",
   "description": "Napit is a powerful, cross-platform API client application designed to test and explore HTTP APIs.",
-  "main": "index.js",
+  "main": "src-electron/main.js",
   "directories": {
     "example": "examples"
   },
   "scripts": {
+    "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -23,5 +24,8 @@
   "homepage": "https://github.com/alternative-intelligence-cp/napit#readme",
   "dependencies": {
     "nitpick-node": "file:../nitpick-packages/packages/nitpick-node"
+  },
+  "devDependencies": {
+    "electron": "^42.4.1"
   }
 }

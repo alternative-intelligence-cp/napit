@@ -4,6 +4,25 @@ const nitpick = require('nitpick-node/build/Release/nitpick_addon');
 
 const args = process.argv.slice(2);
 
+if (args.includes('--gui')) {
+    const { spawn } = require('child_process');
+    const path = require('path');
+    
+    // Spawn electron process using the local node_modules install
+    const electronPath = require('electron');
+    const appPath = path.resolve(__dirname, '..');
+    
+    const child = spawn(electronPath, [appPath], {
+        stdio: 'inherit',
+        windowsHide: false
+    });
+    
+    child.on('close', (code) => {
+        process.exit(code);
+    });
+    return;
+}
+
 if (args.length < 2) {
     console.error("Usage: napit <METHOD> <URL> [BODY]");
     process.exit(1);
