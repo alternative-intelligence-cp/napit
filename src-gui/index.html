@@ -300,7 +300,10 @@
     <div class="main-container">
         <!-- Sidebar: Workspace Explorer -->
         <div class="sidebar">
-            <div class="sidebar-header">Workspace</div>
+            <div class="sidebar-header">
+                Workspace
+                <button id="importCurlBtn" class="secondary-btn" style="padding: 4px 8px; font-size: 11px;" title="Import from Clipboard">Import cURL</button>
+            </div>
             <button id="openFolderBtn" class="sidebar-btn">Open Folder</button>
             
             <div id="envContainer" style="display: none; margin-bottom: 15px;">
@@ -320,6 +323,7 @@
             <div class="pane-header">
                 Request Editor
                 <div class="btn-group">
+                    <button id="copyCurlBtn" class="secondary-btn">Copy as cURL</button>
                     <button id="saveBtn" class="secondary-btn" disabled>Save</button>
                     <button id="sendBtn" class="primary-btn">Send Request</button>
                 </div>

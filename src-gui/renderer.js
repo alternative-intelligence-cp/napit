@@ -161,6 +161,108 @@ btn.addEventListener('click', async () => {
     btn.disabled = false;
 });
 
+// --- cURL Export ---
+const copyCurlBtn = document.getElementById('copyCurlBtn');
+copyCurlBtn.addEventListener('click', async () => {
+    try {
+        let rawText = editor.value;
+        const selectedEnv = envSelect.value;
+        
+        // Phase 3: Interpolation Pre-processor
+        if (selectedEnv && environments[selectedEnv]) {
+            const envVars = environments[selectedEnv];
+            rawText = rawText.replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
+                const key = varName.trim();
+                return envVars[key] !== undefined ? envVars[key] : match;
+            });
+        }
+        
+        const req = window.parseNapitFile(rawText);
+        
+        let curlCmd = `curl -X ${req.method} "${req.url}"`;
+        
+        if (req.headers) {
+            // headers is a string separated by pipe '|' in our parser
+            const headersArr = req.headers.split('|');
+            headersArr.forEach(h => {
+                if (h.trim()) curlCmd += ` \\\n  -H "${h.trim()}"`;
+            });
+        }
+        
+        if (req.body) {
+            // Escape single quotes for bash
+            const escapedBody = req.body.replace(/'/g, "'\\''");
+            curlCmd += ` \\\n  -d '${escapedBody}'`;
+        }
+        
+        await navigator.clipboard.writeText(curlCmd);
+        
+        const originalText = copyCurlBtn.textContent;
+        copyCurlBtn.textContent = 'Copied!';
+        setTimeout(() => copyCurlBtn.textContent = originalText, 1500);
+    } catch (err) {
+        console.error("Export failed:", err);
+    }
+});
+
+// --- cURL Import ---
+const importCurlBtn = document.getElementById('importCurlBtn');
+importCurlBtn.addEventListener('click', async () => {
+    try {
+        const text = await navigator.clipboard.readText();
+        if (!text || !text.trim().startsWith('curl')) {
+            alert('Clipboard does not contain a valid curl command.');
+            return;
+        }
+        
+        // Very basic curl parser (for demonstration/v0.6.0)
+        let method = 'GET';
+        let url = '';
+        let headers = [];
+        let body = '';
+        
+        // Extract URL (assume it's the first thing starting with http)
+        const urlMatch = text.match(/https?:\/\/[^\s"']+/);
+        if (urlMatch) url = urlMatch[0];
+        
+        // Extract Method
+        const methodMatch = text.match(/-X\s+([A-Z]+)/);
+        if (methodMatch) method = methodMatch[1];
+        
+        // Extract Headers
+        const headerRegex = /-H\s+["']([^"']+)["']/g;
+        let hMatch;
+        while ((hMatch = headerRegex.exec(text)) !== null) {
+            headers.push(hMatch[1]);
+        }
+        
+        // Extract Body (data)
+        const bodyMatch = text.match(/--data\s+['"]([^'"]+)['"]|-d\s+['"]([^'"]+)['"]/);
+        if (bodyMatch) {
+            body = bodyMatch[1] || bodyMatch[2];
+            if (method === 'GET') method = 'POST'; // curl defaults to POST if -d is present
+        }
+        
+        let napitStr = "```http\n";
+        napitStr += `${method} ${url}\n`;
+        headers.forEach(h => napitStr += `${h}\n`);
+        
+        if (body) {
+            napitStr += `\n${body}\n`;
+        }
+        napitStr += "```\n";
+        
+        editor.value = napitStr;
+        updateEditorHighlight();
+        
+        if (currentActiveFile) saveBtn.disabled = false;
+        
+    } catch (err) {
+        console.error("Import failed:", err);
+        alert('Failed to read clipboard.');
+    }
+});
+
 // --- Editor Syntax Highlighting & Sync ---
 const editorHighlight = document.getElementById('editorHighlight');
 
