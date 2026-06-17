@@ -11,10 +11,13 @@ const envSelect = document.getElementById('envSelect');
 let currentActiveFile = null;
 let environments = {};
 let currentWorkspacePath = null;
+let requestHistory = [];
 
 let openFiles = [];
 let currentTabIndex = -1;
 const editorTabs = document.getElementById('editorTabs');
+const fetchSchemaBtn = document.getElementById('fetchSchemaBtn');
+let currentGraphqlSchema = null;
 
 function renderTabs() {
     editorTabs.innerHTML = '';
@@ -50,9 +53,6 @@ function renderTabs() {
         editorTabs.appendChild(tab);
     });
 }
-
-// Start the initialization sequence
-init();
 
 // --- Response Tabs Logic ---
 const resBodyTab = document.getElementById('resBodyTab');
@@ -151,6 +151,14 @@ openFolderBtn.addEventListener('click', async () => {
     } else {
         envContainer.style.display = 'none';
         environments = {};
+    }
+    
+    // Load history
+    try {
+        const histData = await window.api.readFile(`${workspacePath}/napit.history.json`);
+        requestHistory = JSON.parse(histData);
+    } catch (err) {
+        requestHistory = [];
     }
     
     if (!files || files.length === 0) {
@@ -252,7 +260,24 @@ async function executeRequest(req, selectedEnv) {
         rawReq.body = interpolate(rawReq.body);
     }
     
-    return await window.api.request(rawReq);
+    const response = await window.api.request(rawReq);
+    
+    // Save to history
+    if (response && response.status > 0) {
+        requestHistory.unshift({
+            timestamp: Date.now(),
+            method: req.method,
+            url: req.url,
+            status: response.status,
+            reqText: req.rawText || ''
+        });
+        if (requestHistory.length > 50) requestHistory.pop();
+        if (currentWorkspacePath) {
+            window.api.saveFile(`${currentWorkspacePath}/napit.history.json`, JSON.stringify(requestHistory, null, 2));
+        }
+    }
+    
+    return response;
 }
 
 function handleResponseUI(response) {
@@ -905,6 +930,10 @@ function insertAutocomplete(val) {
 
 editor.addEventListener('input', () => {
     updateEditorHighlight();
+    if (checkGraphQLAutocomplete()) {
+        if (currentActiveFile) saveBtn.disabled = false;
+        return;
+    }
     
     // Autocomplete detection
     const textUpToCursor = editor.value.substring(0, editor.selectionStart);
@@ -979,6 +1008,15 @@ function updateEditorHighlight() {
     editorHighlight.innerHTML = text;
     editorHighlight.removeAttribute('data-highlighted');
     hljs.highlightElement(editorHighlight);
+    
+    // Check for GraphQL to show Fetch Schema button
+    const lowerVal = editor.value.toLowerCase();
+    if (lowerVal.includes('graphql') || lowerVal.includes('query ') || lowerVal.includes('mutation ')) {
+        if (fetchSchemaBtn) fetchSchemaBtn.style.display = 'inline-block';
+    } else {
+        if (fetchSchemaBtn) fetchSchemaBtn.style.display = 'none';
+        if (autocompleteMenu) autocompleteMenu.style.display = 'none';
+    }
 }
 
 // Sync scroll positions
@@ -989,6 +1027,175 @@ editor.addEventListener('scroll', () => {
 
 // Initialize highlight
 updateEditorHighlight();
+
+// --- GraphQL Auto-complete Logic ---
+const INTROSPECTION_QUERY = `
+  query IntrospectionQuery {
+    __schema {
+      types {
+        name
+        fields { name }
+        inputFields { name }
+      }
+    }
+  }
+`;
+
+function parseIntrospection(schema) {
+    if (!schema || !schema.types) return [];
+    let keywords = new Set();
+    schema.types.forEach(t => {
+        if (!t.name.startsWith('__')) {
+            keywords.add(t.name);
+            if (t.fields) t.fields.forEach(f => keywords.add(f.name));
+            if (t.inputFields) t.inputFields.forEach(f => keywords.add(f.name));
+        }
+    });
+    return Array.from(keywords);
+}
+
+if (fetchSchemaBtn) {
+    fetchSchemaBtn.addEventListener('click', async () => {
+        const reqStr = interpolate(editor.value);
+        const parsed = window.parser.parseHttpRequest(reqStr);
+        if (!parsed || !parsed.url) {
+            alert("No valid URL found to fetch schema.");
+            return;
+        }
+        
+        fetchSchemaBtn.textContent = 'Fetching...';
+        try {
+            const introspectReq = {
+                method: 'POST',
+                url: parsed.url,
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ query: INTROSPECTION_QUERY })
+            };
+            const res = await window.api.request(introspectReq);
+            if (res && res.status === 200) {
+                const data = JSON.parse(res.body);
+                currentGraphqlSchema = parseIntrospection(data.data.__schema);
+                fetchSchemaBtn.textContent = 'Schema Fetched!';
+                setTimeout(() => { fetchSchemaBtn.textContent = 'Fetch Schema'; }, 2000);
+            } else {
+                alert(`Failed: ${res ? res.status : 'Unknown error'}`);
+                fetchSchemaBtn.textContent = 'Fetch Schema';
+            }
+        } catch (e) {
+            alert(e.message);
+            fetchSchemaBtn.textContent = 'Fetch Schema';
+        }
+    });
+}
+
+function getWordAtCaret(text, pos) {
+    const left = text.slice(0, pos).match(/\\w+$/);
+    const right = text.slice(pos).match(/^\\w+/);
+    const wordStart = left ? pos - left[0].length : pos;
+    const word = (left ? left[0] : '') + (right ? right[0] : '');
+    return { word, start: wordStart, length: word.length };
+}
+
+function checkGraphQLAutocomplete() {
+    if (!currentGraphqlSchema || !autocompleteMenu) return false;
+    
+    const pos = editor.selectionStart;
+    const { word, start, length } = getWordAtCaret(editor.value, pos);
+    
+    if (word.length < 2) {
+        return false;
+    }
+    
+    const matches = currentGraphqlSchema.filter(k => k.toLowerCase().includes(word.toLowerCase()) && k !== word);
+    if (matches.length === 0) {
+        return false;
+    }
+    
+    const lines = editor.value.substr(0, pos).split('\n');
+    const cursorX = lines[lines.length-1].length * 8;
+    const cursorY = lines.length * 16;
+    
+    autocompleteMenu.style.left = `${Math.min(cursorX + 10, editor.clientWidth - 200)}px`;
+    autocompleteMenu.style.top = `${cursorY + 5}px`;
+    
+    autocompleteMenu.innerHTML = '';
+    matches.slice(0, 8).forEach(m => {
+        const div = document.createElement('div');
+        div.style.padding = '6px 12px';
+        div.style.cursor = 'pointer';
+        div.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+        div.textContent = m;
+        
+        div.addEventListener('mouseover', () => div.style.background = 'var(--accent-color)');
+        div.addEventListener('mouseout', () => div.style.background = 'transparent');
+        
+        div.addEventListener('click', () => {
+            const before = editor.value.substring(0, start);
+            const after = editor.value.substring(start + length);
+            editor.value = before + m + after;
+            updateEditorHighlight();
+            autocompleteMenu.style.display = 'none';
+            editor.focus();
+            editor.selectionStart = editor.selectionEnd = start + m.length;
+        });
+        autocompleteMenu.appendChild(div);
+    });
+    
+    autocompleteMenu.style.display = 'block';
+    return true;
+}
+
+// --- History Modal Logic ---
+const historyModal = document.getElementById('historyModal');
+const historyBtn = document.getElementById('historyBtn');
+const closeHistoryModalBtn = document.getElementById('closeHistoryModalBtn');
+const historyTableBody = document.getElementById('historyTableBody');
+
+function renderHistory() {
+    historyTableBody.innerHTML = '';
+    if (requestHistory.length === 0) {
+        historyTableBody.innerHTML = '<tr><td colspan="5" style="padding: 10px; text-align: center; color: var(--text-dim);">No history yet.</td></tr>';
+        return;
+    }
+    
+    requestHistory.forEach((hist, index) => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+        
+        const statusClass = hist.status >= 200 && hist.status < 300 ? 'status-success' : 'status-error';
+        const d = new Date(hist.timestamp);
+        
+        tr.innerHTML = `
+            <td style="padding: 8px 0;"><span class="status-badge ${statusClass}">${hist.status}</span></td>
+            <td style="padding: 8px 0; color: var(--accent-color); font-weight: bold;">${hist.method}</td>
+            <td style="padding: 8px 0; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${hist.url}">${hist.url}</td>
+            <td style="padding: 8px 0; color: var(--text-dim);">${d.toLocaleTimeString()}</td>
+            <td style="padding: 8px 0;"><button class="secondary-btn load-hist-btn" data-index="${index}" style="padding: 4px 8px; font-size: 11px;">Load</button></td>
+        `;
+        historyTableBody.appendChild(tr);
+    });
+    
+    document.querySelectorAll('.load-hist-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(e.target.getAttribute('data-index'), 10);
+            const hist = requestHistory[index];
+            if (hist && hist.reqText) {
+                editor.value = hist.reqText + "\n\n" + editor.value;
+                updateEditorHighlight();
+                historyModal.style.display = 'none';
+            }
+        });
+    });
+}
+
+historyBtn.addEventListener('click', () => {
+    renderHistory();
+    historyModal.style.display = 'flex';
+});
+
+closeHistoryModalBtn.addEventListener('click', () => {
+    historyModal.style.display = 'none';
+});
 
 // --- AI Chat Logic ---
 const toggleAiBtn = document.getElementById('toggleAiBtn');

@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { exec } = require('child_process');
 
 const OLLAMA_URL = 'http://localhost:11434/api/chat';
 const MODEL = 'llama3'; // or whatever default model is configured, but let's hardcode for the stub
@@ -43,6 +44,23 @@ const tools = [
                 required: ["filename", "content"]
             }
         }
+    },
+    {
+        type: "function",
+        function: {
+            name: "run_command",
+            description: "Executes a terminal command on the local system. Useful for starting servers (e.g. npm run dev), running tests, or checking file contents.",
+            parameters: {
+                type: "object",
+                properties: {
+                    command: {
+                        type: "string",
+                        description: "The shell command to execute."
+                    }
+                },
+                required: ["command"]
+            }
+        }
     }
 ];
 
@@ -62,6 +80,17 @@ async function executeTool(toolCall, workspacePath) {
             fs.mkdirSync(path.dirname(target), { recursive: true });
             fs.writeFileSync(target, args.content, 'utf-8');
             return `Successfully wrote to ${args.filename}`;
+        }
+        else if (name === 'run_command') {
+            return await new Promise((resolve) => {
+                exec(args.command, { cwd: workspacePath }, (error, stdout, stderr) => {
+                    let out = "";
+                    if (stdout) out += `STDOUT:\n${stdout}\n`;
+                    if (stderr) out += `STDERR:\n${stderr}\n`;
+                    if (error) out += `ERROR:\n${error.message}\n`;
+                    resolve(out || "Command executed successfully with no output.");
+                });
+            });
         }
         return `Error: Unknown tool ${name}`;
     } catch (e) {
