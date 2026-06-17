@@ -5,6 +5,8 @@ extern "libc" {
 }
 
 use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-args/src/nitpick_args.npk".*;
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-api/src/types.npk".*;
+use "parser.npk".*;
 
 func:args_load = string() {
     int64:fp = fopen("/proc/self/cmdline", "r");
@@ -59,7 +61,12 @@ pub func:main = int32() {
     print(file_path);
     print("\n");
     
-    // Scaffolding for parser goes here in the next cycle
+    print("Starting parse...\n");
+    Request:req = raw parse_request(file_path);
+    print("Parsed Method: "); print(req.method); print("\n");
+    print("Parsed URL: "); print(req.url); print("\n");
+    print("Parsed Headers: "); print(req.headers_pipe); print("\n");
+    print("Parsed Body:\n"); print(req.body); print("\n");
 
-    exit(0i32);
+    exit 0;
 };

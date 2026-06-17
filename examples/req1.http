@@ -1,0 +1,7 @@
+POST https://httpbin.org/post
+Content-Type: application/json
+Authorization: Bearer mytoken123
+
+{
+    "hello": "world"
+}

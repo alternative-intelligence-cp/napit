@@ -1,0 +1,83 @@
+extern "libc" {
+    func:fopen  = int64(string:path, string:mode);
+    func:fgetc  = int32(int64:fp);
+    func:fclose = int32(int64:fp);
+}
+
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-api/src/types.npk".*;
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-str/src/nitpick_str.npk".*;
+
+func:_read_file = string(string:path) {
+    int64:fp = fopen(path, "r");
+    if (fp == 0i64) { pass(""); }
+    string:content = "";
+    int32:c = fgetc(fp);
+    while (c >= 0i32) {
+        content = string_concat(content, string_from_char(@cast_unchecked<int8>(c)));
+        c = fgetc(fp);
+    }
+    drop(fclose(fp));
+    pass(content);
+};
+
+pub func:parse_request = Request(string:file_path) {
+    Request:req = raw Request_create("GET", "");
+    
+    string:content = raw _read_file(file_path);
+    if (string_length(content) == 0i64) {
+        pass(req);
+    }
+    
+    // Normalize newlines to \n
+    content = raw Str.replace_all(content, "\r\n", "\n");
+    
+    // Split into lines
+    int64:num_lines = raw Str.line_count(content);
+    if (num_lines == 0i64) {
+        pass(req);
+    }
+    
+    // Line 0 is Method and URL
+    string:line0 = raw Str.token(content, "\n", 0i64);
+    int64:tokens_count = raw Str.token_count(line0, " ");
+    if (tokens_count >= 2i64) {
+        req.method = raw Str.token(line0, " ", 0i64);
+        req.url = raw Str.token(line0, " ", 1i64);
+    } else {
+        // If not separated by space, perhaps there's no body, just URL
+        req.url = string_trim(line0);
+    }
+    
+    // Parse headers until empty line
+    int64:i = 1i64;
+    int32:in_body = 0i32;
+    string:body_content = "";
+    
+    while (i < num_lines) {
+        string:line = raw Str.token(content, "\n", i);
+        if (in_body == 0i32) {
+            if (raw Str.is_blank(line)) {
+                in_body = 1i32;
+            } else {
+                int64:colon_idx = string_index_of(line, ":");
+                if (colon_idx > 0i64) {
+                    string:key = raw Str.before(line, ":");
+                    string:val = string_trim(raw Str.after(line, ":"));
+                    string:hdr = string_concat(key, string_concat(": ", val));
+                    req = raw Request_add_header(req, hdr);
+                }
+            }
+        } else {
+            // Append to body
+            if (string_length(body_content) > 0i64) {
+                body_content = string_concat(body_content, "\n");
+            }
+            body_content = string_concat(body_content, line);
+        }
+        i = i + 1i64;
+    }
+    
+    req = raw Request_set_body(req, body_content);
+    
+    pass(req);
+};
