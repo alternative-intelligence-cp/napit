@@ -17,7 +17,7 @@ function createWindow() {
     });
 
     mainWindow.loadFile(path.join(__dirname, '../src-gui/index.html'));
-    mainWindow.webContents.openDevTools();
+    // mainWindow.webContents.openDevTools();
 }
 
 async function getFiles(dir) {

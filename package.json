@@ -1,6 +1,6 @@
 {
   "name": "napit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Napit is a powerful, cross-platform API client application designed to test and explore HTTP APIs.",
   "main": "src-electron/main.js",
   "directories": {
