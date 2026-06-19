@@ -1,5 +1,5 @@
 extern "napit_shim" {
-    func:napit_write_file2 = int32(string:path, string:content, int64:content_len);
+    func:napit_get_env = int64(string:name);
 }
 
 extern "libc" {
@@ -12,6 +12,7 @@ extern "libc" {
 use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-args/src/nitpick_args.npk".*;
 use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-api/src/types.npk".*;
 use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-str/src/nitpick_str.npk".*;
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-fs/src/nitpick_fs.npk".*;
 use "parser.npk".*;
 
 use "dispatcher.npk".*;
@@ -105,7 +106,7 @@ pub func:main = int32() {
     raw format_response(res);
 
     if (string_length(output_file) > 0i64) {
-        int32:res_write = napit_write_file2(output_file, res.body, string_length(res.body));
+        int32:res_write = raw fs_write_file(output_file, res.body);
         if (res_write == 1i32) {
             print("Response body saved to: "); print(output_file); print("\n");
         } else {
