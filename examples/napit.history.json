@@ -1,0 +1,16 @@
+[
+  {
+    "timestamp": 1781847586269,
+    "method": "GET",
+    "url": "https://httpbin.org/get",
+    "status": 200,
+    "reqText": ""
+  },
+  {
+    "timestamp": 1781746332352,
+    "method": "GET",
+    "url": "https://httpbin.org/get",
+    "status": 200,
+    "reqText": ""
+  }
+]

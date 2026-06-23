@@ -1,40 +1,10 @@
-extern "libc" {
-    func:fopen  = int64(string:path, string:mode);
-    func:fgetc  = int32(int64:fp);
-    func:fclose = int32(int64:fp);
-}
-
-func:getenv_proc = string(string:key) {
-    int64:fp = fopen("/proc/self/environ", "r");
-    if (fp == 0i64) { pass(""); }
-    
-    string:result = "";
-    string:current = "";
-    int32:c = fgetc(fp);
-    while (c >= 0i32) {
-        if (c == 0i32) {
-            // Check if current starts with key + "="
-            string:prefix = string_concat(key, "=");
-            if (string_starts_with(current, prefix)) {
-                // Extract value
-                int64:len = string_length(current);
-                int64:plen = string_length(prefix);
-                result = string_substring(current, plen, len);
-                break;
-            }
-            current = "";
-        } else {
-            current = string_concat(current, string_from_char(@cast_unchecked<int8>(c)));
-        }
-        c = fgetc(fp);
-    }
-    drop(fclose(fp));
-    pass(result);
-}
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-str/src/nitpick_str.npk".*;
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-fs/src/nitpick_fs.npk".*;
 
 pub func:main = int32() {
-    print("PATH: "); print(getenv_proc("PATH")); print("\n");
-    print("HOME: "); print(getenv_proc("HOME")); print("\n");
-    print("NONE: "); print(getenv_proc("DOES_NOT_EXIST")); print("\n");
-    exit 0;
-}
+    string:content = raw fs_read_file("/proc/self/cmdline");
+    string:result = raw Str.replace_all(content, string_from_char(0i8), "|");
+    print(result);
+    print("\n");
+    exit 0i32;
+};

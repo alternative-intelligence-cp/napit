@@ -1,0 +1,7 @@
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-args/src/nitpick_args.npk".*;
+pub func:failsafe = int32(int32:err) { exit err; };
+pub func:main = int32() {
+    bool:h = args_has("a|b|c", "b");
+    if (h == true) { print("yes\n"); }
+    exit 0i32;
+};

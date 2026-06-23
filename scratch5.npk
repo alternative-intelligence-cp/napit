@@ -1,0 +1,23 @@
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-args/src/nitpick_args.npk".*;
+extern "libc" { func:exit = NIL(int32:status); }
+pub func:failsafe = int32(tbb32:err) { exit(1i32); pass(1i32); };
+pub func:main = int32() {
+    int32:argc = get_argc();
+    print("argc: "); print(string_from_int(argc)); print("\n");
+    
+    string:result = "|";
+    int32:i = 0i32;
+    while (i < argc) {
+        string:arg = get_argv(i);
+        result = string_concat(result, arg);
+        result = string_concat(result, "|");
+        i = i + 1i32;
+    }
+    print("result: "); print(result); print("\n");
+    
+    int32:count = raw args_count(result);
+    print("count: "); print(string_from_int(count)); print("\n");
+    
+    exit(0i32);
+    pass(0i32);
+}

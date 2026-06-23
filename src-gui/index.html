@@ -424,6 +424,7 @@
             </div>
             <div style="display: flex; gap: 8px;">
                 <button id="openFolderBtn" class="sidebar-btn" style="flex: 1;">Open Folder</button>
+                <button id="newFileBtn" class="sidebar-btn" style="flex: 1; background: transparent; border-color: var(--border-color); color: var(--text-main);">New File</button>
                 <button id="historyBtn" class="sidebar-btn" style="flex: 1; background: transparent; border-color: var(--border-color); color: var(--text-main);">History</button>
             </div>
             
@@ -481,6 +482,9 @@
             <div style="border-bottom: 1px solid var(--border-color); margin-bottom: 10px; display: flex;">
                 <button id="resBodyTab" class="res-tab-btn active">Body</button>
                 <button id="resHeadersTab" class="res-tab-btn">Headers</button>
+                <div style="flex: 1;"></div>
+                <button id="clearResBtn" class="secondary-btn" style="padding: 2px 8px; font-size: 11px; margin-right: 4px;">Clear</button>
+                <button id="copyResBtn" class="secondary-btn" style="padding: 2px 8px; font-size: 11px;">Copy JSON</button>
             </div>
             
             <div id="outputContainer" class="response-container" style="display: block;">

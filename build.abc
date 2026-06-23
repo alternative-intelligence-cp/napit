@@ -1,12 +1,12 @@
 [project]
 name = "napit"
-version = "0.1.0"
+version = "0.1.1"
 compiler = "/home/randy/Workspace/REPOS/nitpick/build/nitpickc"
 
 [target.napit]
 type = "binary"
 sources = ["src/main.npk"]
 deps = []
-flags = ["-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-args/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-cli/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-api/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-http/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-str/src"]
-link_libraries = ["napit_shim", "nitpick_http_shim", "nitpick_cli_shim", "curl"]
-link_paths = [".", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-http", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-cli"]
+flags = ["-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-args/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-cli/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-api/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-http/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-str/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-fs/src"]
+link_libraries = ["nitpick_http_shim", "nitpick_cli_shim", "nitpick_fs_shim", "curl"]
+link_paths = [".", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-http", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-cli", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-fs"]

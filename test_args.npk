@@ -1,0 +1,12 @@
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-args/src/nitpick_args.npk".*;
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-fs/src/nitpick_fs.npk".*;
+use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-str/src/nitpick_str.npk".*;
+extern "libc" { func:exit = int32(int32:code); }
+pub func:failsafe = int32(tbb32:err) { exit(1i32); };
+pub func:main = int32() {
+    string:content = raw fs_read_file("/proc/self/cmdline");
+    print("content: "); print(content); print("\n");
+    string:result = raw Str.replace_all(content, string_from_char(0i8), "|");
+    print("result: "); print(result); print("\n");
+    exit(0i32);
+}

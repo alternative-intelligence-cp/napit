@@ -75,6 +75,30 @@ resHeadersTab.addEventListener('click', () => {
     outputContainer.style.display = 'none';
 });
 
+const copyResBtn = document.getElementById('copyResBtn');
+copyResBtn.addEventListener('click', async () => {
+    try {
+        const textToCopy = resBodyTab.classList.contains('active') ? output.textContent : headersOutput.textContent;
+        await navigator.clipboard.writeText(textToCopy);
+        const originalText = copyResBtn.textContent;
+        copyResBtn.textContent = 'Copied!';
+        setTimeout(() => copyResBtn.textContent = originalText, 1500);
+    } catch (err) {
+        console.error("Copy failed:", err);
+    }
+});
+
+const clearResBtn = document.getElementById('clearResBtn');
+clearResBtn.addEventListener('click', () => {
+    output.textContent = 'Response will appear here...';
+    output.className = 'language-json';
+    headersOutput.textContent = 'Headers will appear here...';
+    headersOutput.className = 'language-http';
+    statusBadge.style.display = 'none';
+    hljs.highlightElement(output);
+    hljs.highlightElement(headersOutput);
+});
+
 function switchTab(index) {
     if (index < 0 || index >= openFiles.length) return;
     
@@ -126,6 +150,58 @@ function closeTab(index) {
 }
 
 // --- Sidebar Logic ---
+const newFileBtn = document.getElementById('newFileBtn');
+
+newFileBtn.addEventListener('click', async () => {
+    if (!currentWorkspacePath) {
+        alert("Please open a workspace folder first!");
+        return;
+    }
+    const name = prompt('New File Name (e.g. test.http):');
+    if (name && name.trim()) {
+        const fileName = name.trim().endsWith('.http') ? name.trim() : name.trim() + '.http';
+        // Simple join
+        const newFilePath = currentWorkspacePath.endsWith('/') || currentWorkspacePath.endsWith('\\') 
+            ? currentWorkspacePath + fileName 
+            : currentWorkspacePath + '/' + fileName;
+        
+        await window.api.saveFile(newFilePath, "");
+        
+        const li = document.createElement('li');
+        li.className = 'file-item';
+        li.textContent = fileName;
+        li.title = newFilePath;
+        li.addEventListener('click', async () => {
+            let existingIdx = openFiles.findIndex(of => of.path === newFilePath);
+            if (existingIdx !== -1) {
+                switchTab(existingIdx);
+                return;
+            }
+            const content = await window.api.readFile(newFilePath);
+            openFiles.push({
+                path: newFilePath,
+                name: fileName,
+                content: content,
+                saved: true
+            });
+            switchTab(openFiles.length - 1);
+        });
+        
+        if (fileList.firstChild && fileList.firstChild.textContent.includes('No ')) {
+            fileList.innerHTML = '';
+        }
+        
+        fileList.appendChild(li);
+        
+        openFiles.push({
+            path: newFilePath,
+            name: fileName,
+            content: "",
+            saved: true
+        });
+        switchTab(openFiles.length - 1);
+    }
+});
 openFolderBtn.addEventListener('click', async () => {
     const result = await window.api.openDirectory();
     if (!result) return; // User canceled

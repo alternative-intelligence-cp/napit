@@ -1,0 +1,10 @@
+extern "libc" { func:exit = int32(int32:code); }
+pub func:failsafe = int32(tbb32:err) { exit(1i32); };
+pub func:main = int32() {
+    int32:c = get_argc();
+    if (c > 0i32) {
+        print(get_argv(0i32));
+        print("\n");
+    }
+    exit(0i32);
+}
