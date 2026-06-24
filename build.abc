@@ -7,6 +7,6 @@ compiler = "/home/randy/Workspace/REPOS/nitpick/build/nitpickc"
 type = "binary"
 sources = ["src/main.npk"]
 deps = []
-flags = ["-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-args/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-cli/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-api/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-http/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-str/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-fs/src"]
+flags = ["-picky", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-args/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-cli/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-api/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-http/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-str/src", "-I", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-fs/src"]
 link_libraries = ["nitpick_http_shim", "nitpick_cli_shim", "nitpick_fs_shim", "curl"]
 link_paths = [".", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-http", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-cli", "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-fs"]

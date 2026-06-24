@@ -31,7 +31,10 @@ Ensure you have [Node.js](https://nodejs.org/) installed, as well as the native 
 git clone https://github.com/alternative-intelligence-cp/napit.git
 cd napit
 
-# Install dependencies
+# Build the native backend core
+make
+
+# Install Node dependencies
 npm install
 
 # Start the application
@@ -52,3 +55,13 @@ npm start
 
 ## License
 AGPL v3
+
+
+---
+
+## Nitpick Ecosystem
+
+This repository is part of the [Nitpick](https://github.com/alternative-intelligence-cp/nitpick) ecosystem. 
+- 🌍 **[Nitpick-Lang Hub](https://github.com/alternative-intelligence-cp/nitpick-lang)** — The central hub connecting all Nitpick projects.
+- 📖 **[Official Web Documentation](https://ai-liberation-platform.org/nitpick/docs/)** — Guides, references, and language specifications.
+- 🛠️ **[Nitpick Compiler](https://github.com/alternative-intelligence-cp/nitpick)** — The core language and toolchain.

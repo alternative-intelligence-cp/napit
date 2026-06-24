@@ -8,10 +8,10 @@
     "napit": {
       "artifact_path": ".nitpick_make/build/napit",
       "source_hash": "fnv1a:17901839272547891329",
-      "command_hash": 9274556847227010612,
+      "command_hash": 17213996864875905204,
       "source_timestamp": 18446744069053734883,
-      "build_timestamp": 1781847274,
-      "build_duration_ms": 242,
+      "build_timestamp": 1782263504,
+      "build_duration_ms": 394,
       "dependencies": [],
       "implicit_inputs": []
     }
