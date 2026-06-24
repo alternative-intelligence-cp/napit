@@ -24,15 +24,15 @@ Napit is built with:
 
 ## Installation & Build Instructions
 
-Ensure you have [Node.js](https://nodejs.org/) installed, as well as the native `nitpick-node` dependencies if building from source.
+Ensure you have [Node.js](https://nodejs.org/) installed, as well as the native `npkc` compiler (version `0.61.x` or later) if building from source.
 
 ```bash
 # Clone the repository
 git clone https://github.com/alternative-intelligence-cp/napit.git
 cd napit
 
-# Build the native backend core
-make
+# Build the native backend core with strict checking
+npkc -picky src/main.npk
 
 # Install Node dependencies
 npm install

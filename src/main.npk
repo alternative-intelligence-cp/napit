@@ -2,12 +2,10 @@ extern "napit_shim" {
     func:napit_get_env = int64(string:name);
 }
 
-extern "libc" {
-    func:fopen  = int64(string:path, string:mode);
-    func:fgetc  = int32(int64:fp);
-    func:fclose = int32(int64:fp);
-    func:fputs  = int32(string:s, int64:fp);
-}
+func:failsafe = int32(tbb32:err) {
+    if (err == 0) { exit 1i32; }
+    exit 1i32;
+};
 
 use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-args/src/nitpick_args.npk".*;
 use "/home/randy/Workspace/REPOS/nitpick-packages/packages/nitpick-api/src/types.npk".*;
